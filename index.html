@@ -195,8 +195,15 @@
 </head>
 <body>
     <div class="header">
-        <h1>📅 Планировщик задач</h1>
-        <div>Мой календарь с задачами</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h1 style="margin: 0; font-size: 1.3em;">PlanerBot</h1>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/50/User_Telegram_logo.svg" 
+                 alt="Telegram" 
+                 style="width: 40px; height: 40px;" 
+                 id="telegramLogo"
+                 onload="initUserInfo()">
+        </div>
+        <div id="greeting" style="text-align: center; color: #94a3b8; font-size: 1.1em;"></div>
     </div>
 
     <div class="nav">
@@ -266,8 +273,21 @@
                     }));
                 });
                 
-                console.log('Telegram user:', tg.initDataUnsafe?.user);
+                const user = tg.initDataUnsafe?.user;
+                console.log('Telegram user:', user);
+                
+                // Отображаем приветствие с именем пользователя
+                const greetingEl = document.getElementById('greeting');
+                if (user) {
+                    const firstName = user.first_name || '';
+                    greetingEl.innerHTML = '👋 Привет' + (firstName ? ', <strong>' + firstName + '</strong>' : '') + '!';
+                }
             }
+        }
+
+        function initUserInfo() {
+            // Инициализируем Telegram Web App после загрузки логотипа
+            initTelegram();
         }
 
         function formatDate(date) {
