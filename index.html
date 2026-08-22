@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test Mini App</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1e1e2e;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: #34d399;
+            color: #1e1e2e;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .btn:hover {
+            background: #2bb789;
+        }
+        .task-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .task-input input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .task-list {
+            list-style: none;
+            padding: 0;
+        }
+        .task-item {
+            background: #334155;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .task-text {
+            flex: 1;
+        }
+        .task-delete {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧾 Мои задачи</h1>
+    </div>
+
+    <div class="task-input">
+        <input type="text" id="newTask" placeholder="Введите задачу..." maxlength="50">
+        <button class="btn" style="width: auto; padding: 12px 15px;" onclick="addTask()">Добавить</button>
+    </div>
+
+    <ul class="task-list" id="taskList"></ul>
+
+    <!-- Telegram Web App API -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        // Инициализация Telegram Mini App
+        const tg = window.Telegram.WebApp;
+
+        // Настройка цвета платформы
+        tg.setHeaderColor('#1e1e2e');
+        tg.setBackgroundColor('#1e1e2e');
+
+        // Показать кнопку "Готово"
+        tg.MainButton.setParams({
+            text: "Готово",
+            color: "#34d399"
+        });
+
+        let tasks = [];
+
+        function addTask() {
+            const input = document.getElementById('newTask');
+            if (input.value.trim()) {
+                const task = {
+                    id: Date.now(),
+                    text: input.value,
+                    createdAt: new Date().toISOString()
+                };
+                tasks.push(task);
+                input.value = '';
+                renderTasks();
+                
+                // Отправляем задачу в чат бота через Telegram API
+                tg.sendData(JSON.stringify(task));
+            }
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(task => task.id !== id);
+            renderTasks();
+        }
+
+        function renderTasks() {
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+                li.innerHTML = `
+                    <span class="task-text">${task.text}</span>
+                    <button class="task-delete" onclick="deleteTask(${task.id})">✕</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        // Обработчики событий Telegram
+        tg.MainButton.onClick(() => {
+            tg.sendData(JSON.stringify({tasks}));
+        });
+
+        tg.BackButton.onClick(() => {
+            tg.close();
+        });
+
+        // Слушаем события клавиатуры
+        document.getElementById('newTask').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+
+        console.log('Mini App инициализирована');
+        console.log('Пользователь:', tg.initDataUnsafe.user);
+    </script>
+</body>
+</html>
