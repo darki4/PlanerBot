@@ -48,7 +48,12 @@
             margin-bottom: 20px;
         }
         .day-header {
-            display: contents;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.9em;
+            padding: 8px 0;
+        }
+        .day-header-cell {
             text-align: center;
             color: #94a3b8;
             font-size: 0.9em;
@@ -284,7 +289,10 @@
             const today = new Date();
             const todayStr = formatDate(today);
             
-            let calendarHTML = '<div class="day-header">' + DAY_HEADERS.join('') + '</div>';
+            let calendarHTML = '';
+            DAY_HEADERS.forEach(function(day) {
+                calendarHTML += '<div class="day-header-cell">' + day + '</div>';
+            });
             
             const prevMonthLastDate = new Date(year, month, 0).getDate();
             for (let i = adjustedFirstDay - 1; i >= 0; i--) {
