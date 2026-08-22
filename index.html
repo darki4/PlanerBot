@@ -218,10 +218,10 @@
         <button class="add-btn" onclick="showAddModal()">➕ Добавить задачу</button>
     </div>
 
-    <!-- Модальное окно добавления задачи -->
-    <div class="modal" id="addTaskModal">
+    <!-- Модальное окно добавления/редактирования задачи -->
+    <div class="modal" id="taskModal">
         <div class="modal-content">
-            <h3>Новая задача</h3>
+            <h3 id="taskModalTitle">Новая задача</h3>
             <input type="text" id="taskTitle" placeholder="Заголовок задачи" required>
             <textarea id="taskDesc" placeholder="Описание задачи"></textarea>
             <select id="taskPriority">
@@ -242,6 +242,7 @@
         let currentDate = new Date();
         let selectedDate = new Date();
         let tasks = JSON.parse(localStorage.getItem('tasks')) || {};
+        let currentTask = null;
         
         const DAY_HEADERS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
         const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -354,11 +355,30 @@
         }
 
         function showAddModal() {
-            document.getElementById('addTaskModal').style.display = 'block';
+            currentTask = null;
+            document.getElementById('taskModalTitle').textContent = 'Новая задача';
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDesc').value = '';
+            document.getElementById('taskPriority').value = 'low';
+            document.getElementById('taskModal').style.display = 'block';
+        }
+
+        function editTask(taskId) {
+            const dateStr = formatDate(selectedDate);
+            const task = (tasks[dateStr] || []).find(t => t.id === taskId);
+            if (task) {
+                currentTask = task;
+                document.getElementById('taskModalTitle').textContent = 'Редактирование задачи';
+                document.getElementById('taskTitle').value = task.title;
+                document.getElementById('taskDesc').value = task.desc;
+                document.getElementById('taskPriority').value = task.priority;
+                document.getElementById('taskModal').style.display = 'block';
+            }
         }
 
         function closeModal() {
-            document.getElementById('addTaskModal').style.display = 'none';
+            document.getElementById('taskModal').style.display = 'none';
+            currentTask = null;
         }
 
         function saveTask() {
@@ -371,19 +391,27 @@
                 return;
             }
             
-            const task = {
-                id: Date.now().toString(),
+            const taskData = {
+                id: currentTask ? currentTask.id : Date.now().toString(),
                 title: titleInput.value,
                 desc: descInput.value,
                 priority: prioritySelect.value,
-                createdAt: new Date().toISOString()
+                createdAt: currentTask ? currentTask.createdAt : new Date().toISOString()
             };
             
             const dateStr = formatDate(selectedDate);
             if (!tasks[dateStr]) {
                 tasks[dateStr] = [];
             }
-            tasks[dateStr].push(task);
+            
+            if (currentTask) {
+                const taskIndex = tasks[dateStr].findIndex(t => t.id === currentTask.id);
+                if (taskIndex !== -1) {
+                    tasks[dateStr][taskIndex] = taskData;
+                }
+            } else {
+                tasks[dateStr].push(taskData);
+            }
             
             localStorage.setItem('tasks', JSON.stringify(tasks));
             
@@ -441,9 +469,12 @@
                         '<div class="task-title">' +
                             task.title +
                             ' <span class="task-priority priority-' + task.priority + '">' + getPriorityText(task.priority) + '</span>' +
-                            '<button class="delete-btn" onclick="deleteTask(\'' + task.id + '\')" title="Удалить задачу">✕</button>' +
                         '</div>' +
                         (task.desc ? '<div class="task-desc">' + task.desc + '</div>' : '') +
+                        '<div style="margin-top:5px;">' +
+                            '<button class="delete-btn" onclick="editTask(\'' + task.id + '\')" title="Редактировать задачу" style="color:#34d399;">✏️</button>' +
+                            '<button class="delete-btn" onclick="deleteTask(\'' + task.id + '\')" title="Удалить задачу">✕</button>' +
+                        '</div>' +
                         '</div>';
                 });
                 document.getElementById('taskList').innerHTML = taskHTML;
