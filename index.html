@@ -96,6 +96,9 @@
         .task-title {
             font-weight: bold;
             margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .task-desc {
             font-size: 0.9em;
@@ -111,6 +114,14 @@
         .priority-low { background: #16a34a; }
         .priority-medium { background: #f59e0b; }
         .priority-high { background: #dc2626; }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 0 5px;
+        }
         .add-btn {
             background: #34d399;
             color: #1e1e2e;
@@ -169,6 +180,11 @@
             background: #ef4444;
             color: white;
         }
+        .empty-state {
+            text-align: center;
+            color: #94a3b8;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -186,7 +202,10 @@
     <div class="calendar" id="calendar"></div>
 
     <div class="tasks-container">
-        <h3>Задачи на дату</h3>
+        <h3 style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="taskHeader">Задачи на сегодня</span>
+            <span id="deleteAllContainer"></span>
+        </div>
         <div id="taskList">
             <!-- Задачи будут добавлены здесь -->
         </div>
@@ -306,39 +325,6 @@
             updateTaskList();
         }
 
-        function updateTaskList() {
-            const dateStr = formatDate(selectedDate);
-            const dayTasks = tasks[dateStr] || [];
-            const today = new Date();
-            const isToday = dateStr === formatDate(today);
-            
-            let taskHTML = '';
-            if (dayTasks.length === 0) {
-                taskHTML = '<div style="color: #94a3b8; text-align: center; padding: 20px;">Нет задач</div>';
-            } else {
-                dayTasks.forEach((task, index) => {
-                    taskHTML += '<div class="task-item">' +
-                        '<div class="task-title">' + task.title + 
-                        ' <span class="task-priority priority-' + task.priority + '">' + getPriorityText(task.priority) + '</span>' +
-                        '</div>' +
-                        (task.desc ? '<div class="task-desc">' + task.desc + '</div>' : '') +
-                        '</div>';
-                });
-            }
-            
-            const header = document.querySelector('.tasks-container h3');
-            header.textContent = 'Задачи на ' + formatDisplayDate(selectedDate);
-            
-            document.getElementById('taskList').innerHTML = taskHTML;
-        }
-
-        function formatDisplayDate(date) {
-            const today = new Date();
-            if (formatDate(date) === formatDate(today)) return 'сегодня';
-            if (formatDate(date) === formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1))) return 'завтра';
-            return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth()+1).padStart(2, '0')}.${date.getFullYear()}`;
-        }
-
         function getPriorityText(priority) {
             const texts = {
                 low: 'Низкий',
@@ -377,6 +363,7 @@
             }
             
             const task = {
+                id: Date.now().toString(),
                 title: titleInput.value,
                 desc: descInput.value,
                 priority: prioritySelect.value,
@@ -398,6 +385,67 @@
             closeModal();
             updateTaskList();
             renderCalendar(currentDate);
+        }
+
+        function deleteTask(taskId) {
+            const dateStr = formatDate(selectedDate);
+            if (!tasks[dateStr]) return;
+            
+            tasks[dateStr] = tasks[dateStr].filter(task => task.id !== taskId);
+            
+            if (tasks[dateStr].length === 0) {
+                delete tasks[dateStr];
+            }
+            
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            updateTaskList();
+            renderCalendar(currentDate);
+        }
+
+        function deleteAllTasks() {
+            const dateStr = formatDate(selectedDate);
+            delete tasks[dateStr];
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            updateTaskList();
+            renderCalendar(currentDate);
+        }
+
+        function updateTaskList() {
+            const dateStr = formatDate(selectedDate);
+            const dayTasks = tasks[dateStr] || [];
+            
+            document.getElementById('taskHeader').textContent = 'Задачи на ' + formatDisplayDate(selectedDate);
+            
+            let deleteAllContainer = document.getElementById('deleteAllContainer');
+            
+            if (dayTasks.length === 0) {
+                deleteAllContainer.innerHTML = '';
+                document.getElementById('taskList').innerHTML = 
+                    '<div class="empty-state">📭 Нет задач</div>';
+            } else {
+                deleteAllContainer.innerHTML = 
+                    '<button class="delete-btn" onclick="deleteAllTasks()" title="Очистить все задачи">🗑️</button>';
+                
+                let taskHTML = '';
+                dayTasks.forEach(task => {
+                    taskHTML += '<div class="task-item">' +
+                        '<div class="task-title">' +
+                            task.title +
+                            ' <span class="task-priority priority-' + task.priority + '">' + getPriorityText(task.priority) + '</span>' +
+                            '<button class="delete-btn" onclick="deleteTask(\'' + task.id + '\')" title="Удалить задачу">✕</button>' +
+                        '</div>' +
+                        (task.desc ? '<div class="task-desc">' + task.desc + '</div>' : '') +
+                        '</div>';
+                });
+                document.getElementById('taskList').innerHTML = taskHTML;
+            }
+        }
+
+        function formatDisplayDate(date) {
+            const today = new Date();
+            if (formatDate(date) === formatDate(today)) return 'сегодня';
+            if (formatDate(date) === formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1))) return 'завтра';
+            return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth()+1).padStart(2, '0')}.${date.getFullYear()}`;
         }
 
         // Инициализация при загрузке
