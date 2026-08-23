@@ -149,6 +149,26 @@
         .btn-cancel { flex: 1; background: #ef4444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .back-btn { background: none; border: none; color: #94a3b8; font-size: 1.2em; cursor: pointer; margin-bottom: 15px; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Стили для просмотра задач */
+        .tasks-view { display: none; }
+        .tasks-view-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+        }
+        .tasks-view-title { font-size: 1.3em; font-weight: 600; }
+        .tasks-list-container { margin-top: 15px; }
+        .tasks-list-date { color: #34d399; font-weight: 600; margin-bottom: 15px; }
+        .task-item-view { 
+            background: #334155; 
+            border-radius: 8px; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+        }
+        .task-item-view .task-title { font-weight: 600; margin-bottom: 5px; }
+        .task-item-view .task-desc { color: #94a3b8; font-size: 0.9em; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -246,6 +266,41 @@
         </div>
     </div>
 
+    <!-- Страница "Созданные задачи" -->
+    <div class="tasks-view" id="tasksView">
+        <div class="tasks-view-header">
+            <button class="back-btn" onclick="backToMenu()">←</button>
+            <div class="tasks-view-title">Созданные задачи</div>
+            <div style="width: 24px;"></div>
+        </div>
+        
+        <!-- Календарь для просмотра задач -->
+        <div class="calendar-container" id="tasksViewCalendar">
+            <div class="calendar-header">
+                <button class="month-btn" onclick="prevMonthTasks()">‹</button>
+                <div class="month-title" id="tasksViewMonth">Август 2026</div>
+                <button class="month-btn" onclick="nextMonthTasks()">›</button>
+            </div>
+            <div class="weekdays">
+                <div class="weekday">Пн</div>
+                <div class="weekday">Вт</div>
+                <div class="weekday">Ср</div>
+                <div class="weekday">Чт</div>
+                <div class="weekday">Пт</div>
+                <div class="weekday">Сб</div>
+                <div class="weekday">Вс</div>
+            </div>
+            <div class="days-grid" id="tasksViewCalendarDays"></div>
+        </div>
+        
+        <!-- Список задач выбранного дня -->
+        <div class="tasks-list-container" id="tasksListContainer" style="display:none;">
+            <button class="back-btn" onclick="backToTasksView()">←</button>
+            <div class="tasks-list-date" id="tasksListDate"></div>
+            <div id="tasksListView"></div>
+        </div>
+    </div>
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         let tg;
@@ -300,7 +355,7 @@
                 let taskDot = dayTasks.length > 0 ? '<div class="task-dot"></div>' : '';
                 let classes = 'day-cell';
                 if (dateStr === todayStr) classes += ' today';
-                daysHTML += '<div class="' + classes + '" onclick="selectDate(' + year + ', ' + (month + 1) + ', ' + d + ')">' +
+                daysHTML += '<div class="' + classes + '" onclick="selectDateForTask(' + year + ', ' + (month + 1) + ', ' + d + ')">' +
                     '<div class="day-number">' + d + '</div>' + taskDot + '</div>';
             }
             
@@ -315,7 +370,45 @@
             document.getElementById('calendarDays').innerHTML = daysHTML;
         }
 
-        function selectDate(year, month, day) {
+        function renderTasksCalendar(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            document.getElementById('tasksViewMonth').textContent = MONTH_NAMES[month] + ' ' + year;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+            const today = new Date();
+            const todayStr = formatDate(today);
+            
+            let daysHTML = '';
+            const prevMonthLastDate = new Date(year, month, 0).getDate();
+            for (let i = adjustedFirstDay - 1; i >= 0; i--) {
+                daysHTML += '<div class="day-cell other-month">' + (prevMonthLastDate - i) + '</div>';
+            }
+            
+            for (let d = 1; d <= lastDate; d++) {
+                const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                const dayTasks = tasks[dateStr] || [];
+                let taskDot = dayTasks.length > 0 ? '<div class="task-dot"></div>' : '';
+                let classes = 'day-cell';
+                if (dateStr === todayStr) classes += ' today';
+                daysHTML += '<div class="' + classes + '" onclick="selectDateForView(' + year + ', ' + (month + 1) + ', ' + d + ')">' +
+                    '<div class="day-number">' + d + '</div>' + taskDot + '</div>';
+            }
+            
+            const totalCells = adjustedFirstDay + lastDate;
+            const remainingCells = 7 - (totalCells % 7);
+            if (remainingCells < 7) {
+                for (let i = 1; i <= remainingCells; i++) {
+                    daysHTML += '<div class="day-cell other-month">' + i + '</div>';
+                }
+            }
+            
+            document.getElementById('tasksViewCalendarDays').innerHTML = daysHTML;
+        }
+
+        function selectDateForTask(year, month, day) {
             selectedDate = new Date(year, month - 1, day);
             const dateStr = formatDate(selectedDate);
             document.getElementById('selectedDateText').textContent = 
@@ -324,15 +417,37 @@
             document.getElementById('taskForm').style.display = 'block';
         }
 
+        function selectDateForView(year, month, day) {
+            selectedDate = new Date(year, month - 1, day);
+            document.getElementById('tasksViewCalendar').style.display = 'none';
+            document.getElementById('tasksListContainer').style.display = 'block';
+            updateTaskList();
+        }
+
         function backToCalendar() {
             document.getElementById('taskForm').style.display = 'none';
-            document.getElementById('taskCalendarContainer').style.display = 'block';
+            if (document.getElementById('taskCalendarContainer').style.display !== 'none') {
+                document.getElementById('taskCalendarContainer').style.display = 'block';
+            }
+            if (document.getElementById('tasksViewCalendar').style.display !== 'none') {
+                document.getElementById('tasksViewCalendar').style.display = 'block';
+            }
             selectedDate = null;
         }
 
         function backToMenu() {
+            document.getElementById('taskForm').style.display = 'none';
             document.getElementById('taskCalendarContainer').style.display = 'none';
+            document.getElementById('tasksView').style.display = 'none';
+            document.getElementById('tasksListContainer').style.display = 'none';
             document.getElementById('mainMenu').style.display = 'block';
+            currentDate = new Date();
+            selectedDate = null;
+        }
+
+        function backToTasksView() {
+            document.getElementById('tasksListContainer').style.display = 'none';
+            document.getElementById('tasksViewCalendar').style.display = 'block';
         }
 
         function toggleTimeType(type) {
@@ -347,11 +462,88 @@
         }
 
         function createMeeting() { alert('Создание встречи - в разработке'); }
-        function viewTasks() { alert('Просмотр задач - в разработке'); }
+        
+        function updateTaskList() {
+            if (!selectedDate) return;
+            
+            const dateStr = formatDate(selectedDate);
+            const dayTasks = tasks[dateStr] || [];
+            const taskListEl = document.getElementById('tasksListView');
+            const dateHeader = document.getElementById('tasksListDate');
+            
+            dateHeader.textContent = formatDisplayDate(selectedDate);
+            
+            if (dayTasks.length === 0) {
+                taskListEl.innerHTML = 
+                    '<div class="empty-state">📭 Нет задач на эту дату</div>';
+            } else {
+                let taskHTML = '';
+                dayTasks.forEach(task => {
+                    const timeStr = formatTimeDisplay(task.time);
+                    taskHTML += '<div class="task-item-view">' +
+                        '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+                            '<div>' +
+                                '<div class="task-title">' + task.title + '</div>' +
+                                (task.desc ? '<div class="task-desc">' + task.desc + '</div>' : '') +
+                                (timeStr ? '<div style="color:#94a3b8; font-size:0.8em;">' + timeStr + '</div>' : '') +
+                            '</div>' +
+                            '<div>' +
+                                '<button class="delete-btn" onclick="editTaskFromView(\'' + task.id + '\')" title="Редактировать">✏️</button>' +
+                                '<button class="delete-btn" onclick="deleteTaskFromView(\'' + task.id + '\')" title="Удалить">✕</button>' +
+                            '</div>' +
+                        '</div>' +
+                        '</div>';
+                });
+                taskListEl.innerHTML = taskHTML;
+            }
+        }
+
+        function formatTimeDisplay(timeObj) {
+            if (!timeObj) return '';
+            if (timeObj.type === 'single') {
+                return '🕐 ' + timeObj.time;
+            } else if (timeObj.type === 'range') {
+                return '🕐 ' + timeObj.start + ' - ' + timeObj.end;
+            }
+            return '';
+        }
+
+        function editTaskFromView(taskId) {
+            const dateStr = formatDate(selectedDate);
+            const task = (tasks[dateStr] || []).find(t => t.id === taskId);
+            if (task) {
+                currentTask = task;
+                document.getElementById('taskModalTitle').textContent = 'Редактирование задачи';
+                document.getElementById('taskTitle').value = task.title;
+                document.getElementById('taskDesc').value = task.desc;
+                document.getElementById('taskPriority').value = task.priority;
+                document.getElementById('taskModal').style.display = 'block';
+            }
+        }
+
+        function deleteTaskFromView(taskId) {
+            const dateStr = formatDate(selectedDate);
+            tasks[dateStr] = tasks[dateStr].filter(t => t.id !== taskId);
+            if (tasks[dateStr].length === 0) delete tasks[dateStr];
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            renderTasksCalendar(currentDate);
+            updateTaskList();
+        }
+        
+        function viewTasks() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('tasksView').style.display = 'block';
+            renderCalendar(currentDate);
+            updateTaskList();
+        }
+        
         function viewMeetings() { alert('Просмотр встреч - в разработке'); }
 
         function prevMonthCal() { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(currentDate); }
         function nextMonthCal() { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(currentDate); }
+        
+        function prevMonthTasks() { currentDate.setMonth(currentDate.getMonth() - 1); renderTasksCalendar(currentDate); }
+        function nextMonthTasks() { currentDate.setMonth(currentDate.getMonth() + 1); renderTasksCalendar(currentDate); }
 
         function saveTask() {
             if (!selectedDate) return;
