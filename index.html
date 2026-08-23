@@ -111,6 +111,7 @@
             cursor: pointer; 
         }
         .day-cell:hover { background: #3d5067; }
+        .day-cell.past { opacity: 0.3; cursor: not-allowed; }
         .day-number { font-size: 0.75em; color: #94a3b8; }
         .today .day-number { color: #34d399; font-weight: bold; }
         .other-month { opacity: 0.4; }
@@ -168,7 +169,8 @@
             margin-bottom: 10px; 
         }
         .task-item-view .task-title { font-weight: 600; margin-bottom: 5px; }
-        .task-item-view .task-desc { color: #94a3b8; font-size: 0.9em; color: #94a3b8; }
+        .task-item-view .task-desc { color: #94a3b8; font-size: 0.9em; }
+        .empty-state { text-align: center; color: #94a3b8; padding: 20px; }
     </style>
 </head>
 <body>
@@ -307,6 +309,7 @@
         let currentDate = new Date();
         let selectedDate = null;
         let tasks = JSON.parse(localStorage.getItem('tasks')) || {};
+        let currentTask = null;
         
         const DAY_HEADERS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
         const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -322,7 +325,16 @@
                     const dateStr = formatDate(selectedDate);
                     tg.sendData(JSON.stringify({ tasks: tasks[dateStr] || [], selectedDate: dateStr }));
                 });
-                console.log('Telegram user:', tg.initDataUnsafe?.user);
+                
+                // Исправлено: используем initDataUnsafe.user для имени
+                const user = tg.initDataUnsafe?.user;
+                console.log('Telegram user:', user);
+                
+                const userNameEl = document.getElementById('userName');
+                if (user) {
+                    const firstName = user.first_name || '';
+                    userNameEl.textContent = firstName || 'Пользователь';
+                }
             }
         }
 
@@ -330,6 +342,14 @@
             return date.getFullYear() + '-' +
                    String(date.getMonth() + 1).padStart(2, '0') + '-' +
                    String(date.getDate()).padStart(2, '0');
+        }
+
+        function isPastDate(date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const checkDate = new Date(date);
+            checkDate.setHours(0, 0, 0, 0);
+            return checkDate < today;
         }
 
         function renderCalendar(date) {
@@ -354,8 +374,16 @@
                 const dayTasks = tasks[dateStr] || [];
                 let taskDot = dayTasks.length > 0 ? '<div class="task-dot"></div>' : '';
                 let classes = 'day-cell';
+                
+                const cellDate = new Date(year, month, d);
+                const isPast = isPastDate(cellDate);
+                
                 if (dateStr === todayStr) classes += ' today';
-                daysHTML += '<div class="' + classes + '" onclick="selectDateForTask(' + year + ', ' + (month + 1) + ', ' + d + ')">' +
+                if (isPast) classes += ' past';
+                
+                const onclickHandler = isPast ? '' : 'onclick="selectDateForTask(' + year + ', ' + (month + 1) + ', ' + d + ')"';
+                
+                daysHTML += '<div class="' + classes + '" ' + onclickHandler + '>' +
                     '<div class="day-number">' + d + '</div>' + taskDot + '</div>';
             }
             
@@ -460,7 +488,7 @@
             renderCalendar(currentDate);
             document.getElementById('taskCalendarContainer').style.display = 'block';
         }
-
+        
         function createMeeting() { alert('Создание встречи - в разработке'); }
         
         function updateTaskList() {
@@ -529,12 +557,11 @@
             renderTasksCalendar(currentDate);
             updateTaskList();
         }
-        
+
         function viewTasks() {
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('tasksView').style.display = 'block';
-            renderCalendar(currentDate);
-            updateTaskList();
+            renderTasksCalendar(currentDate);
         }
         
         function viewMeetings() { alert('Просмотр встреч - в разработке'); }
@@ -588,6 +615,13 @@
             document.getElementById('taskTime').value = '';
             document.getElementById('taskTimeStart').value = '';
             document.getElementById('taskTimeEnd').value = '';
+        }
+
+        function formatDisplayDate(date) {
+            const today = new Date();
+            if (formatDate(date) === formatDate(today)) return 'сегодня';
+            if (formatDate(date) === formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1))) return 'завтра';
+            return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth()+1).padStart(2, '0')}.${date.getFullYear()}`;
         }
 
         window.onload = function() {
