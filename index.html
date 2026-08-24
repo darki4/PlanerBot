@@ -745,6 +745,15 @@
             const dateStr = formatDate(selectedDate);
             const task = (tasks[dateStr] || []).find(t => t.id === taskId);
             if (task) {
+                // Задержка для снятия блокировки Telegram после предыдущих действий
+                setTimeout(() => {
+                    openEditModal(task, dateStr);
+                }, 50);
+            }
+        }
+        
+        function openEditModal(task, dateStr) {
+            currentTask = { taskId: task.id, dateStr: dateStr, task: task };
                 currentTask = { taskId: taskId, dateStr: dateStr, task: task };
                 
                 // Очистка предыдущих обработчиков
@@ -841,6 +850,18 @@
                 input.style.pointerEvents = '';
                 input.style.touchAction = '';
             });
+            
+            // Принудительный сброс состояния Telegram Web Apps
+            setTimeout(() => {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        // Полный сброс Telegram Web App
+                        if (typeof window.Telegram.WebApp.ready === 'function') {
+                            window.Telegram.WebApp.ready();
+                        }
+                    } catch(e) {}
+                }
+            }, 100);
             
             currentTask = null;
         }
