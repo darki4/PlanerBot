@@ -877,6 +877,7 @@
             renderTasksCalendar(currentDate);
             updateTaskList();
             
+            resetTelegramState();
             alert('✅ Задача обновлена!');
         }
 
@@ -906,6 +907,32 @@
         
         function prevMonthTasks() { currentDate.setMonth(currentDate.getMonth() - 1); renderTasksCalendar(currentDate); }
         function nextMonthTasks() { currentDate.setMonth(currentDate.getMonth() + 1); renderTasksCalendar(currentDate); }
+
+         function resetTelegramState() {
+            setTimeout(() => {
+                // Полный сброс всех стилей блокировки
+                document.body.style.overflow = '';
+                const allInputs = document.querySelectorAll('input, textarea, select, button');
+                allInputs.forEach(el => {
+                    el.disabled = false;
+                    el.readOnly = false;
+                    el.style.pointerEvents = '';
+                    el.style.touchAction = '';
+                });
+                
+                // Сброс состояния Telegram Web Apps
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        if (typeof window.Telegram.WebApp.ready === 'function') {
+                            window.Telegram.WebApp.ready();
+                        }
+                        if (window.Telegram.WebApp.MainButton) {
+                            window.Telegram.WebApp.MainButton.hide();
+                        }
+                    } catch(e) {}
+                }
+            }, 500);
+        }
 
         function saveTask() {
             if (!selectedDate) return;
@@ -941,15 +968,20 @@
                 tg.sendData(JSON.stringify({ action: 'task_created', task: task, date: dateStr }));
             }
             
-            alert('Задача сохранена!');
-            backToCalendar();
-            renderCalendar(currentDate);
+            alert('✅ Задача сохранена!');
+            
+            // Полный сброс и возврат в календарь
+            document.getElementById('taskForm').style.display = 'none';
+            document.getElementById('taskCalendarContainer').style.display = 'block';
             
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskDesc').value = '';
             document.getElementById('taskTime').value = '';
             document.getElementById('taskTimeStart').value = '';
             document.getElementById('taskTimeEnd').value = '';
+            
+            renderCalendar(currentDate);
+            resetTelegramState();
         }
 
         function formatDisplayDate(date) {
