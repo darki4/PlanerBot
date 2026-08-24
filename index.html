@@ -153,6 +153,15 @@
         .time-radio:checked + .time-option { border-color: #34d399; }
         .time-inputs { display: flex; gap: 10px; margin-top: 10px; }
         .time-input { flex: 1; padding: 10px; background: #334155; border: 1px solid #444; border-radius: 6px; color: #e2e8f0; }
+        .schedule-settings-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1e293b; z-index: 100; padding: 15px; box-sizing: border-box; overflow-y: auto; }
+        .schedule-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .schedule-section { background: #2d2d3a; padding: 15px; border-radius: 10px; }
+        .schedule-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .schedule-day { width: 130px; font-weight: 500; color: #e2e8f0; }
+        .schedule-time { flex: 1; display: flex; align-items: center; gap: 8px; }
+        .schedule-check { width: 120px; display: flex; justify-content: center; }
+        .schedule-checkbox { width: 20px; height: 20px; cursor: pointer; }
+        .schedule-row:last-child { margin-bottom: 0; }
         .form-actions { display: flex; gap: 10px; margin-top: 20px; }
         .btn-submit { flex: 1; background: #34d399; color: #1e1e2e; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-cancel { flex: 1; background: #ef4444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
@@ -302,7 +311,7 @@
         </div>
         <div class="footer">
             <div class="footer-item active"><span>📅</span><span>Расписание</span></div>
-            <div class="footer-item"><span>⚙️</span><span>Настройки</span></div>
+            <div class="footer-item" onclick="openScheduleSettings()"><span>⚙️</span><span>Настройки</span></div>
         </div>
     </div>
 
@@ -436,6 +445,22 @@
             <button class="back-btn" onclick="backToTasksView()">←</button>
             <div class="tasks-list-date" id="tasksListDate"></div>
             <div id="tasksListView"></div>
+        </div>
+    </div>
+
+    <!-- Настройки расписания -->
+    <div class="schedule-settings-view" id="scheduleSettingsView" style="display:none;">
+        <div class="schedule-header">
+            <button class="back-btn" onclick="backToMenuFromSettings()">←</button>
+            <h2 style="font-size: 1.5em; margin: 10px 0; text-align: center;">Настройки расписания</h2>
+        </div>
+        <div class="schedule-section">
+            <h3 style="margin-bottom: 15px; color: #cbd5e1;">Рабочие часы</h3>
+            <div id="scheduleSettingsContent"></div>
+        </div>
+        <div class="form-actions" style="margin-top: 20px;">
+            <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
+            <button class="btn-submit" onclick="saveScheduleSettings()">Сохранить</button>
         </div>
     </div>
 
@@ -900,7 +925,85 @@
             renderTasksCalendar(currentDate);
         }
         
-        function viewMeetings() { alert('Просмотр встреч - в разработке'); }
+        function viewMeetings() { alert('Просмотр встреч - в разработке'); }        
+        function openScheduleSettings() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('scheduleSettingsView').style.display = 'block';
+            resetTelegramState();
+        }
+        
+        function backToMenuFromSettings() {
+            document.getElementById('scheduleSettingsView').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'block';
+            resetTelegramState();
+        }
+        
+        function saveScheduleSettings() {
+            const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
+            alert('✅ Настройки расписания сохранены!');
+            backToMenuFromSettings();
+        }
+        
+        function toggleWorkingDay(day) {
+            const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
+            if (!settings[day]) {
+                settings[day] = { working: true, start: '09:00', end: '18:00' };
+            } else {
+                settings[day].working = !settings[day].working;
+                if (!settings[day].start) settings[day].start = '09:00';
+                if (!settings[day].end) settings[day].end = '18:00';
+            }
+            localStorage.setItem('scheduleSettings', JSON.stringify(settings));
+        }
+        
+        function updateDayTime(day, field, value) {
+            const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
+            if (!settings[day]) settings[day] = {};
+            settings[day][field] = value;
+            localStorage.setItem('scheduleSettings', JSON.stringify(settings));
+        }
+        
+        function loadScheduleSettings() {
+            const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            let html = '';
+            days.forEach(day => {
+                const daySettings = settings[day] || {};
+                const working = daySettings.working !== undefined ? daySettings.working : (['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day));
+                const start = daySettings.start || '09:00';
+                const end = daySettings.end || '18:00';
+                
+                html += `<div class="schedule-row">
+                    <div class="schedule-day">${getDayName(day)}</div>
+                    <div class="schedule-time">
+                        <input type="time" class="form-input" value="${start}" onchange="updateDayTime('${day}', 'start', this.value)">
+                        <span style="color: #94a3b8; margin: 0 8px;">—</span>
+                        <input type="time" class="form-input" value="${end}" onchange="updateDayTime('${day}', 'end', this.value)">
+                    </div>
+                    <div class="schedule-check">
+                        <input type="checkbox" class="schedule-checkbox" ${working ? 'checked' : ''} onchange="toggleWorkingDay('${day}')">
+                    </div>
+                </div>`;
+            });
+            document.getElementById('scheduleSettingsContent').innerHTML = html;
+            
+            setTimeout(() => {
+                resetTelegramState();
+            }, 300);
+        }
+        
+        function getDayName(day) {
+            const names = {
+                'monday': 'Понедельник',
+                'tuesday': 'Вторник',
+                'wednesday': 'Среда',
+                'thursday': 'Четверг',
+                'friday': 'Пятница',
+                'saturday': 'Суббота',
+                'sunday': 'Воскресенье'
+            };
+            return names[day] || day;
+        }
 
         function prevMonthCal() { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(currentDate); }
         function nextMonthCal() { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(currentDate); }
