@@ -130,6 +130,14 @@
             border-radius: 8px; 
             color: #e2e8f0; 
             font-size: 1em; 
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+            z-index: 10;
+            position: relative;
         }
         .time-toggle { display: flex; gap: 10px; margin-bottom: 10px; }
         .time-radio { display: none; }
@@ -654,6 +662,36 @@
             document.getElementById('mainMenu').style.display = 'none';
             renderCalendar(currentDate);
             document.getElementById('taskCalendarContainer').style.display = 'block';
+            
+            // Принудительная активация полей формы создания задачи
+            setTimeout(() => {
+                const form = document.getElementById('taskForm');
+                const inputs = form.querySelectorAll('input, textarea, select');
+                inputs.forEach(input => {
+                    input.disabled = false;
+                    input.readOnly = false;
+                    input.style.pointerEvents = 'auto';
+                    input.style.touchAction = 'manipulation';
+                    input.style.userSelect = 'text';
+                    input.style.webkitUserSelect = 'text';
+                });
+                
+                // Фокус на поле названия задачи
+                const titleInput = document.getElementById('taskTitle');
+                if (titleInput) {
+                    titleInput.focus();
+                }
+                
+                // Патч для Telegram Web Apps
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        window.Telegram.WebApp.MainButton.hide();
+                        if (typeof window.Telegram.WebApp.ready === 'function') {
+                            window.Telegram.WebApp.ready();
+                        }
+                    } catch(e) {}
+                }
+            }, 300);
         }
         
         function createMeeting() { alert('Создание встречи - в разработке'); }
@@ -701,11 +739,25 @@
             return '';
         }
 
+        // Хранилище активных обработчиков для отпис
+        let activeModalHandlers = [];
+        
         function editTaskFromView(taskId) {
             const dateStr = formatDate(selectedDate);
             const task = (tasks[dateStr] || []).find(t => t.id === taskId);
             if (task) {
                 currentTask = { taskId: taskId, dateStr: dateStr, task: task };
+                
+                // Очистка предыдущих обработчиков
+                if (activeModalHandlers.length > 0) {
+                    const prevModal = document.getElementById('editTaskModal');
+                    activeModalHandlers.forEach(h => {
+                        if (h && h.element && h.handler) {
+                            prevModal.removeEventListener(h.element, h.handler);
+                        }
+                    });
+                    activeModalHandlers = [];
+                }
                 
                 // Предотвращаем скролл страницы при открытом модальном окне
                 document.body.style.overflow = 'hidden';
@@ -739,34 +791,25 @@
                 modal.style.display = 'block';
                 modal.style.opacity = '1';
                 
-                // Принудительная активация всех полей ввода
+                // Принудительная активация всех полей ввода без кликов на другие элементы
                 const inputs = modal.querySelectorAll('input, textarea, select');
                 inputs.forEach(input => {
                     input.disabled = false;
                     input.readOnly = false;
                     input.style.pointerEvents = 'auto';
                     input.style.touchAction = 'manipulation';
-                    input.setAttribute('data-tg-locked', 'false');
+                    input.style.zIndex = '9999';
+                    input.style.position = 'relative';
                 });
                 
-                // Снятие всех CSS-блокировок с модального окна
-                modal.style.pointerEvents = 'auto';
-                modal.style.touchAction = 'auto';
-                modal.style.userSelect = 'text';
-                modal.style.webkitUserSelect = 'text';
-                modal.style.msUserSelect = 'text';
-                
-                // Фокус на поле названия с максимальной задержкой
+                // Фокус на поле названия через 300ms
                 setTimeout(() => {
                     const nameInput = document.getElementById('editTaskName');
                     if (nameInput) {
                         nameInput.disabled = false;
                         nameInput.readOnly = false;
                         nameInput.style.pointerEvents = 'auto';
-                        nameInput.style.touchAction = 'manipulation';
                         nameInput.focus();
-                        nameInput.click();
-                        nameInput.select();
                     }
                     
                     // Патч для Telegram Web Apps
@@ -774,47 +817,12 @@
                         try {
                             window.Telegram.WebApp.MainButton.hide();
                             window.Telegram.WebApp.disableClosingConfirmation();
-                            // Полный сброс состояния Telegram Web App
                             if (typeof window.Telegram.WebApp.ready === 'function') {
                                 window.Telegram.WebApp.ready();
                             }
                         } catch(e) {}
                     }
                 }, 300);
-                
-                // Дополнительные touch-обработчики для разблокировки ввода
-                const modalEl = document.getElementById('editTaskModal');
-                const unblock = function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    // Попытка активировать поле при касании
-                    if (e.touches && e.touches.length > 0) {
-                        const target = e.target || e.touches[0].target;
-                        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
-                            target.disabled = false;
-                            target.readOnly = false;
-                            target.focus();
-                        }
-                    }
-                };
-                modalEl.addEventListener('touchmove', unblock, { passive: false });
-                modalEl.addEventListener('touchstart', unblock, { passive: false });
-                modalEl.addEventListener('mousedown', unblock, { passive: false });
-                
-                // Инициируем событие клика для активации полей
-                setTimeout(() => {
-                    modal.dispatchEvent(new MouseEvent('touchstart', { bubbles: true, cancelable: true, view: window }));
-                    modal.dispatchEvent(new MouseEvent('touchmove', { bubbles: true, cancelable: true, view: window }));
-                    modal.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-                    
-                    // И второй клик через 500мс
-                    setTimeout(() => {
-                        inputs.forEach(input => {
-                            input.style.pointerEvents = 'auto';
-                            input.focus();
-                        });
-                    }, 800);
-                }, 500);
             }
         }
 
@@ -872,11 +880,12 @@
             }
             
             localStorage.setItem('tasks', JSON.stringify(tasks));
-            document.getElementById('editTaskModal').style.display = 'none';
+            
+            // Используем closeEditModal для корректного сброса состояния
+            closeEditModal();
             
             renderTasksCalendar(currentDate);
             updateTaskList();
-            currentTask = null;
             
             alert('✅ Задача обновлена!');
         }
