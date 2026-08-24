@@ -153,7 +153,9 @@
         .time-radio:checked + .time-option { border-color: #34d399; }
         .time-inputs { display: flex; gap: 10px; margin-top: 10px; }
         .time-input { flex: 1; padding: 10px; background: #334155; border: 1px solid #444; border-radius: 6px; color: #e2e8f0; }
-        .schedule-settings-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1e293b; z-index: 100; padding: 15px; box-sizing: border-box; overflow-y: auto; }
+        .schedule-settings-view { display: none; background: #1e293b; z-index: 10; padding: 15px; box-sizing: border-box; overflow-y: auto; }
+.settings-btn { margin-top: 15px; padding: 12px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%; }
+.settings-btn:hover { background: #2563eb; }
         .schedule-header { display: flex; align-items: center; margin-bottom: 20px; }
         .schedule-section { background: #2d2d3a; padding: 15px; border-radius: 10px; }
         .schedule-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
@@ -445,22 +447,23 @@
             <button class="back-btn" onclick="backToTasksView()">←</button>
             <div class="tasks-list-date" id="tasksListDate"></div>
             <div id="tasksListView"></div>
+            <button class="settings-btn" onclick="openScheduleSettings()">Настройки расписания</button>
         </div>
-    </div>
 
-    <!-- Настройки расписания -->
-    <div class="schedule-settings-view" id="scheduleSettingsView" style="display:none;">
-        <div class="schedule-header">
-            <button class="back-btn" onclick="backToMenuFromSettings()">←</button>
-            <h2 style="font-size: 1.5em; margin: 10px 0; text-align: center;">Настройки расписания</h2>
-        </div>
-        <div class="schedule-section">
-            <h3 style="margin-bottom: 15px; color: #cbd5e1;">Рабочие часы</h3>
-            <div id="scheduleSettingsContent"></div>
-        </div>
-        <div class="form-actions" style="margin-top: 20px;">
-            <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
-            <button class="btn-submit" onclick="saveScheduleSettings()">Сохранить</button>
+        <!-- Настройки расписания -->
+        <div class="schedule-settings-view" id="scheduleSettingsView" style="display:none;">
+            <div class="schedule-header">
+                <button class="back-btn" onclick="backToMenuFromSettings()">←</button>
+                <h2 style="font-size: 1.5em; margin: 10px 0; text-align: center;">Настройки расписания</h2>
+            </div>
+            <div class="schedule-section">
+                <h3 style="margin-bottom: 15px; color: #cbd5e1;">Рабочие часы</h3>
+                <div id="scheduleSettingsContent"></div>
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
+                <button class="btn-submit" onclick="saveScheduleSettings()">Сохранить</button>
+            </div>
         </div>
     </div>
 
@@ -928,7 +931,9 @@
         function viewMeetings() { alert('Просмотр встреч - в разработке'); }        
         function openScheduleSettings() {
             document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('tasksListContainer').style.display = 'none';
             document.getElementById('scheduleSettingsView').style.display = 'block';
+            loadScheduleSettings();
             resetTelegramState();
         }
         
