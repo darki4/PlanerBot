@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PlanerBot - Календарь задач</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background: #1e1e2e; 
+            color: #e2e8f0; 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            min-height: 100vh; 
+            padding: 15px; 
+        }
+        .profile-block { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            margin-bottom: 25px; 
+            padding-bottom: 15px; 
+            border-bottom: 1px solid #334155; 
+        }
+        .user-avatar { 
+            width: 50px; 
+            height: 50px; 
+            border-radius: 50%; 
+            background: #34d399; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 20px; 
+        }
+        .user-info h2 { font-size: 1.3em; font-weight: 600; }
+        .user-info p { color: #94a3b8; font-size: 0.9em; }
+        .creation-cards, .list-cards { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+            margin-bottom: 25px; 
+        }
+        .card { 
+            background: #334155; 
+            border-radius: 12px; 
+            padding: 15px; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
+        .card:hover { background: #3d5067; }
+        .card-icon { font-size: 28px; margin-bottom: 8px; }
+        .card-text { font-size: 1.1em; font-weight: 500; }
+        .footer { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding-top: 15px; 
+            border-top: 1px solid #334155; 
+        }
+        .footer-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            font-size: 1.1em; 
+        }
+        .footer-item.active { color: #34d399; }
+        
+        /* Календарь */
+        .calendar-container { display: none; }
+        .calendar-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+        }
+        .month-btn { 
+            background: #334155; 
+            border: none; 
+            color: #e2e8f0; 
+            padding: 8px 12px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+        }
+        .month-title { font-weight: bold; font-size: 1.2em; }
+        .weekdays { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 3px; 
+            margin-bottom: 5px; 
+        }
+        .weekday { 
+            text-align: center; 
+            color: #94a3b8; 
+            font-size: 0.8em; 
+            padding: 8px 0; 
+        }
+        .days-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 3px; 
+        }
+        .day-cell { 
+            aspect-ratio: 1; 
+            background: #334155; 
+            border-radius: 6px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start; 
+            padding: 5px; 
+            cursor: pointer; 
+        }
+        .day-cell:hover { background: #3d5067; }
+        .day-cell.past { opacity: 0.3; cursor: not-allowed; }
+        .day-number { font-size: 0.75em; color: #94a3b8; }
+        .today .day-number { color: #34d399; font-weight: bold; }
+        .other-month { opacity: 0.4; }
+        .task-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: auto; background: #34d399; }
+        
+        /* Форма задачи */
+        .task-form { display: none; margin-top: 15px; }
+        .task-form h2 { font-size: 1.3em; margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; color: #94a3b8; }
+        .form-input { 
+            width: 100%; 
+            padding: 12px; 
+            background: #334155; 
+            border: 1px solid #444; 
+            border-radius: 8px; 
+            color: #e2e8f0; 
+            font-size: 1em; 
+        }
+        .time-toggle { display: flex; gap: 10px; margin-bottom: 10px; }
+        .time-radio { display: none; }
+        .time-option { 
+            flex: 1; 
+            padding: 10px; 
+            background: #334155; 
+            border: 2px solid transparent; 
+            border-radius: 8px; 
+            text-align: center; 
+            cursor: pointer; 
+        }
+        .time-radio:checked + .time-option { border-color: #34d399; }
+        .time-inputs { display: flex; gap: 10px; margin-top: 10px; }
+        .time-input { flex: 1; padding: 10px; background: #334155; border: 1px solid #444; border-radius: 6px; color: #e2e8f0; }
+        .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-submit { flex: 1; background: #34d399; color: #1e1e2e; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-cancel { flex: 1; background: #ef4444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .back-btn { background: none; border: none; color: #94a3b8; font-size: 1.2em; cursor: pointer; margin-bottom: 15px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Кнопки действий в списке задач */
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .btn-edit {
+            flex: 1;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .btn-edit:hover { background: #2563eb; }
+        .btn-delete {
+            flex: 1;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .btn-delete:hover { background: #dc2626; }
+        
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+        }
+        .modal-content {
+            background: #2d2d3a;
+            margin: 20% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            z-index: 101;
+            pointer-events: auto;
+        }
+        .modal-content input,
+        .modal-content textarea,
+        .modal-content select {
+            pointer-events: auto;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .modal-content input:focus,
+        .modal-content textarea:focus,
+        .modal-content select:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 0;
+            z-index: 200;
+            position: relative;
+        }
+        .modal h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        
+        /* Стили для просмотра задач */
+        .tasks-view { display: none; }
+        .tasks-view-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+        }
+        .tasks-view-title { font-size: 1.3em; font-weight: 600; }
+        .tasks-list-container { margin-top: 15px; }
+        .tasks-list-date { color: #34d399; font-weight: 600; margin-bottom: 15px; }
+        .task-item-view { 
+            background: #334155; 
+            border-radius: 8px; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+        }
+        .task-item-view .task-title { font-weight: 600; margin-bottom: 5px; }
+        .task-item-view .task-desc { color: #94a3b8; font-size: 0.9em; }
+        .empty-state { text-align: center; color: #94a3b8; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="profile-block">
+        <div class="user-avatar">👤</div>
+        <div class="user-info">
+            <h2 id="userName">Загрузка...</h2>
+            <p>Премиум подписка ✓</p>
+        </div>
+    </div>
+
+    <div id="mainMenu">
+        <div class="creation-cards">
+            <div class="card" onclick="createTask()">
+                <div class="card-icon">✅</div>
+                <div class="card-text">Создать задачу</div>
+            </div>
+            <div class="card" onclick="createMeeting()">
+                <div class="card-icon">📅</div>
+                <div class="card-text">Создать встречу</div>
+            </div>
+        </div>
+        <div class="list-cards">
+            <div class="card" onclick="viewTasks()">
+                <div class="card-icon">📋</div>
+                <div class="card-text">Созданные задачи</div>
+            </div>
+            <div class="card" onclick="viewMeetings()">
+                <div class="card-icon">📆</div>
+                <div class="card-text">Созданные встречи</div>
+            </div>
+        </div>
+        <div class="footer">
+            <div class="footer-item active"><span>📅</span><span>Расписание</span></div>
+            <div class="footer-item"><span>⚙️</span><span>Настройки</span></div>
+        </div>
+    </div>
+
+    <div class="calendar-container" id="taskCalendarContainer">
+        <div class="calendar-header">
+            <button class="month-btn" onclick="backToMenu()">←</button>
+            <button class="month-btn" onclick="prevMonthCal()">‹</button>
+            <div class="month-title" id="calendarMonth">Август 2026</div>
+            <button class="month-btn" onclick="nextMonthCal()">›</button>
+        </div>
+        <div class="weekdays">
+            <div class="weekday">Пн</div>
+            <div class="weekday">Вт</div>
+            <div class="weekday">Ср</div>
+            <div class="weekday">Чт</div>
+            <div class="weekday">Пт</div>
+            <div class="weekday">Сб</div>
+            <div class="weekday">Вс</div>
+        </div>
+        <div class="days-grid" id="calendarDays"></div>
+    </div>
+
+    <div class="task-form" id="taskForm">
+        <button class="back-btn" onclick="backToCalendar()">←</button>
+        <h2>Новая задача</h2>
+        <div class="form-group">
+            <label class="form-label">Дата: <span id="selectedDateText"></span></label>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Название задачи *</label>
+            <input type="text" class="form-input" id="taskTitle" placeholder="Введите название задачи">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Описание задачи</label>
+            <textarea class="form-input" id="taskDesc" placeholder="Введите описание задачи" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Время выполнения</label>
+            <div class="time-toggle">
+                <label class="time-option">
+                    <input type="radio" name="timeType" class="time-radio" value="single" onchange="toggleTimeType(this.value)">
+                    Одиночное время
+                </label>
+                <label class="time-option">
+                    <input type="radio" name="timeType" class="time-radio" value="range" onchange="toggleTimeType(this.value)">
+                    Промежуток времени
+                </label>
+            </div>
+            <div id="singleTime" class="time-inputs">
+                <input type="time" class="time-input" id="taskTime">
+            </div>
+            <div id="rangeTime" class="time-inputs" style="display:none;">
+                <input type="time" class="time-input" id="taskTimeStart">
+                <input type="time" class="time-input" id="taskTimeEnd">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn-cancel" onclick="backToCalendar()">Отмена</button>
+            <button class="btn-submit" onclick="saveTask()">Сохранить задачу</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования задачи -->
+    <div class="modal" id="editTaskModal">
+        <div class="modal-content">
+            <h3 id="editTaskTitle">Редактирование задачи</h3>
+            <div class="form-group">
+                <label class="form-label">Название задачи *</label>
+                <input type="text" class="form-input" id="editTaskName" placeholder="Введите название задачи" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Описание задачи</label>
+                <textarea class="form-input" id="editTaskDescription" placeholder="Введите описание задачи" rows="3"></textarea>
+            </div>
+            <input type="hidden" id="editTaskId">
+            <div style="margin: 15px 0;">
+                <label class="form-label" style="display: block; margin-bottom: 8px; color: #94a3b8;">Время выполнения</label>
+                <div class="time-toggle">
+                    <label class="time-option">
+                        <input type="radio" name="editTimeType" class="time-radio" value="single" onchange="toggleTimeType('edit', this.value)">
+                        Одиночное время
+                    </label>
+                    <label class="time-option">
+                        <input type="radio" name="editTimeType" class="time-radio" value="range" onchange="toggleTimeType('edit', this.value)">
+                        Промежуток времени
+                    </label>
+                </div>
+                <div id="editSingleTime" class="time-inputs">
+                    <input type="time" class="time-input" id="editTaskTime">
+                </div>
+                <div id="editRangeTime" class="time-inputs" style="display:none;">
+                    <input type="time" class="time-input" id="editTaskTimeStart">
+                    <input type="time" class="time-input" id="editTaskTimeEnd">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn-cancel" onclick="closeEditModal()">Отмена</button>
+                <button class="btn-submit" onclick="saveTaskEdit()">Сохранить изменения</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Страница "Созданные задачи" -->
+    <div class="tasks-view" id="tasksView">
+        <div class="tasks-view-header">
+            <button class="back-btn" onclick="backToMenu()">←</button>
+            <div class="tasks-view-title">Созданные задачи</div>
+            <div style="width: 24px;"></div>
+        </div>
+        
+        <!-- Календарь для просмотра задач -->
+        <div class="calendar-container" id="tasksViewCalendar">
+            <div class="calendar-header">
+                <button class="month-btn" onclick="prevMonthTasks()">‹</button>
+                <div class="month-title" id="tasksViewMonth">Август 2026</div>
+                <button class="month-btn" onclick="nextMonthTasks()">›</button>
+            </div>
+            <div class="weekdays">
+                <div class="weekday">Пн</div>
+                <div class="weekday">Вт</div>
+                <div class="weekday">Ср</div>
+                <div class="weekday">Чт</div>
+                <div class="weekday">Пт</div>
+                <div class="weekday">Сб</div>
+                <div class="weekday">Вс</div>
+            </div>
+            <div class="days-grid" id="tasksViewCalendarDays"></div>
+        </div>
+        
+        <!-- Список задач выбранного дня -->
+        <div class="tasks-list-container" id="tasksListContainer" style="display:none;">
+            <button class="back-btn" onclick="backToTasksView()">←</button>
+            <div class="tasks-list-date" id="tasksListDate"></div>
+            <div id="tasksListView"></div>
+        </div>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        let tg;
+        let currentDate = new Date();
+        let selectedDate = null;
+        const APP_VERSION = '20260824-v1';
+        
+        // Проверка версии и очистка устаревшего кэша
+        const storedVersion = localStorage.getItem('tasks_version');
+        if (storedVersion && storedVersion !== APP_VERSION) {
+            localStorage.removeItem('tasks');
+            localStorage.removeItem('tasks_version');
+        }
+        localStorage.setItem('tasks_version', APP_VERSION);
+        
+        // Миграция старых задач если необходимо
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || {};
+        
+        // Проверка структуры задач и исправление
+        Object.keys(tasks).forEach(dateKey => {
+            if (Array.isArray(tasks[dateKey])) {
+                tasks[dateKey] = tasks[dateKey].map(task => {
+                    // Убеждаемся что у всех задач есть id
+                    if (!task.id) {
+                        task.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+                    }
+                    return task;
+                });
+            } else {
+                // Если не массив, удаляем
+                delete tasks[dateKey];
+            }
+        });
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+        
+        let currentTask = null;
+        
+        const DAY_HEADERS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                             'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+        function initTelegram() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.setHeaderColor('#1e1e2e');
+                tg.setBackgroundColor('#1e1e2e');
+                tg.MainButton.setParams({ text: "Готово", color: "#34d399" });
+                tg.MainButton.onClick(() => {
+                    const dateStr = formatDate(selectedDate);
+                    tg.sendData(JSON.stringify({ tasks: tasks[dateStr] || [], selectedDate: dateStr }));
+                });
+                
+                // Исправлено: используем initDataUnsafe.user для имени
+                const user = tg.initDataUnsafe?.user;
+                console.log('Telegram user:', user);
+                
+                const userNameEl = document.getElementById('userName');
+                if (user) {
+                    const firstName = user.first_name || '';
+                    userNameEl.textContent = firstName || 'Пользователь';
+                }
+            }
+        }
+
+        function formatDate(date) {
+            return date.getFullYear() + '-' +
+                   String(date.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(date.getDate()).padStart(2, '0');
+        }
+
+        function isPastDate(date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const checkDate = new Date(date);
+            checkDate.setHours(0, 0, 0, 0);
+            return checkDate < today;
+        }
+
+        function renderCalendar(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            document.getElementById('calendarMonth').textContent = MONTH_NAMES[month] + ' ' + year;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+            const today = new Date();
+            const todayStr = formatDate(today);
+            
+            let daysHTML = '';
+            const prevMonthLastDate = new Date(year, month, 0).getDate();
+            for (let i = adjustedFirstDay - 1; i >= 0; i--) {
+                daysHTML += '<div class="day-cell other-month">' + (prevMonthLastDate - i) + '</div>';
+            }
+            
+            for (let d = 1; d <= lastDate; d++) {
+                const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                const dayTasks = tasks[dateStr] || [];
+                let taskDot = dayTasks.length > 0 ? '<div class="task-dot"></div>' : '';
+                let classes = 'day-cell';
+                
+                const cellDate = new Date(year, month, d);
+                const isPast = isPastDate(cellDate);
+                
+                if (dateStr === todayStr) classes += ' today';
+                if (isPast) classes += ' past';
+                
+                const onclickHandler = isPast ? '' : 'onclick="selectDateForTask(' + year + ', ' + (month + 1) + ', ' + d + ')"';
+                
+                daysHTML += '<div class="' + classes + '" ' + onclickHandler + '>' +
+                    '<div class="day-number">' + d + '</div>' + taskDot + '</div>';
+            }
+            
+            const totalCells = adjustedFirstDay + lastDate;
+            const remainingCells = 7 - (totalCells % 7);
+            if (remainingCells < 7) {
+                for (let i = 1; i <= remainingCells; i++) {
+                    daysHTML += '<div class="day-cell other-month">' + i + '</div>';
+                }
+            }
+            
+            document.getElementById('calendarDays').innerHTML = daysHTML;
+        }
+
+        function renderTasksCalendar(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            document.getElementById('tasksViewMonth').textContent = MONTH_NAMES[month] + ' ' + year;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+            const today = new Date();
+            const todayStr = formatDate(today);
+            
+            let daysHTML = '';
+            const prevMonthLastDate = new Date(year, month, 0).getDate();
+            for (let i = adjustedFirstDay - 1; i >= 0; i--) {
+                daysHTML += '<div class="day-cell other-month">' + (prevMonthLastDate - i) + '</div>';
+            }
+            
+            for (let d = 1; d <= lastDate; d++) {
+                const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                const dayTasks = tasks[dateStr] || [];
+                let taskDot = dayTasks.length > 0 ? '<div class="task-dot"></div>' : '';
+                let classes = 'day-cell';
+                if (dateStr === todayStr) classes += ' today';
+                daysHTML += '<div class="' + classes + '" onclick="selectDateForView(' + year + ', ' + (month + 1) + ', ' + d + ')">' +
+                    '<div class="day-number">' + d + '</div>' + taskDot + '</div>';
+            }
+            
+            const totalCells = adjustedFirstDay + lastDate;
+            const remainingCells = 7 - (totalCells % 7);
+            if (remainingCells < 7) {
+                for (let i = 1; i <= remainingCells; i++) {
+                    daysHTML += '<div class="day-cell other-month">' + i + '</div>';
+                }
+            }
+            
+            document.getElementById('tasksViewCalendarDays').innerHTML = daysHTML;
+        }
+
+        function selectDateForTask(year, month, day) {
+            selectedDate = new Date(year, month - 1, day);
+            const dateStr = formatDate(selectedDate);
+            document.getElementById('selectedDateText').textContent = 
+                selectedDate.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('taskCalendarContainer').style.display = 'none';
+            document.getElementById('taskForm').style.display = 'block';
+        }
+
+        function selectDateForView(year, month, day) {
+            selectedDate = new Date(year, month - 1, day);
+            document.getElementById('tasksViewCalendar').style.display = 'none';
+            document.getElementById('tasksListContainer').style.display = 'block';
+            updateTaskList();
+        }
+
+        function backToCalendar() {
+            document.getElementById('taskForm').style.display = 'none';
+            
+            // Показываем соответствующий календарь в зависимости от текущего режима
+            if (document.getElementById('tasksView').style.display === 'block') {
+                // Мы в режиме просмотра задач
+                document.getElementById('tasksViewCalendar').style.display = 'block';
+            } else {
+                // Мы в режиме создания задачи
+                document.getElementById('taskCalendarContainer').style.display = 'block';
+                renderCalendar(currentDate); // Перерисовываем календарь
+            }
+            selectedDate = null;
+        }
+
+        function backToMenu() {
+            document.getElementById('taskForm').style.display = 'none';
+            document.getElementById('taskCalendarContainer').style.display = 'none';
+            document.getElementById('tasksView').style.display = 'none';
+            document.getElementById('tasksListContainer').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'block';
+            currentDate = new Date();
+            selectedDate = null;
+        }
+
+        function backToTasksView() {
+            document.getElementById('tasksListContainer').style.display = 'none';
+            document.getElementById('tasksViewCalendar').style.display = 'block';
+        }
+
+        function toggleTimeType(prefix, type) {
+            if (!prefix) prefix = '';
+            
+            const singleId = prefix ? prefix + 'SingleTime' : 'singleTime';
+            const rangeId = prefix ? prefix + 'RangeTime' : 'rangeTime';
+            
+            document.getElementById(singleId).style.display = type === 'single' ? 'flex' : 'none';
+            document.getElementById(rangeId).style.display = type === 'range' ? 'flex' : 'none';
+        }
+
+        function createTask() {
+            document.getElementById('mainMenu').style.display = 'none';
+            renderCalendar(currentDate);
+            document.getElementById('taskCalendarContainer').style.display = 'block';
+        }
+        
+        function createMeeting() { alert('Создание встречи - в разработке'); }
+        
+        function updateTaskList() {
+            if (!selectedDate) return;
+            
+            const dateStr = formatDate(selectedDate);
+            const dayTasks = tasks[dateStr] || [];
+            const taskListEl = document.getElementById('tasksListView');
+            const dateHeader = document.getElementById('tasksListDate');
+            
+            dateHeader.textContent = formatDisplayDate(selectedDate);
+            
+            if (dayTasks.length === 0) {
+                taskListEl.innerHTML = 
+                    '<div class="empty-state">📭 Нет задач на эту дату</div>';
+            } else {
+                let taskHTML = '';
+                dayTasks.forEach(task => {
+                    const timeStr = formatTimeDisplay(task.time);
+                    taskHTML += '<div class="task-item-view">' +
+                        '<div>' +
+                            '<div class="task-title">' + task.title + '</div>' +
+                            (task.desc ? '<div class="task-desc">' + task.desc + '</div>' : '') +
+                            (timeStr ? '<div style="color:#94a3b8; font-size:0.8em; margin-top: 4px;">' + timeStr + '</div>' : '') +
+                        '</div>' +
+                        '<div class="task-actions">' +
+                            '<button class="btn-edit" onclick="editTaskFromView(\'' + task.id + '\')">✏️ Редактировать</button>' +
+                            '<button class="btn-delete" onclick="deleteTaskFromView(\'' + task.id + '\')">🗑️ Удалить</button>' +
+                        '</div>' +
+                    '</div>';
+                });
+                taskListEl.innerHTML = taskHTML;
+            }
+        }
+
+        function formatTimeDisplay(timeObj) {
+            if (!timeObj) return '';
+            if (timeObj.type === 'single') {
+                return '🕐 ' + timeObj.time;
+            } else if (timeObj.type === 'range') {
+                return '🕐 ' + timeObj.start + ' - ' + timeObj.end;
+            }
+            return '';
+        }
+
+        function editTaskFromView(taskId) {
+            const dateStr = formatDate(selectedDate);
+            const task = (tasks[dateStr] || []).find(t => t.id === taskId);
+            if (task) {
+                currentTask = { taskId: taskId, dateStr: dateStr, task: task };
+                
+                // Предотвращаем скролл страницы при открытом модальном окне
+                document.body.style.overflow = 'hidden';
+                
+                document.getElementById('editTaskTitle').textContent = 'Редактирование задачи';
+                document.getElementById('editTaskName').value = task.title;
+                document.getElementById('editTaskDescription').value = task.desc || '';
+                
+                // Установим время
+                const singleTime = document.getElementById('editTaskTime');
+                const rangeStart = document.getElementById('editTaskTimeStart');
+                const rangeEnd = document.getElementById('editTaskTimeEnd');
+                
+                // Сброс временных полей
+                document.querySelectorAll('input[name="editTimeType"]').forEach(radio => radio.checked = false);
+                document.getElementById('editSingleTime').style.display = 'none';
+                document.getElementById('editRangeTime').style.display = 'none';
+                
+                if (task.time && task.time.type === 'single') {
+                    document.querySelector('input[name="editTimeType"][value="single"]').checked = true;
+                    document.getElementById('editSingleTime').style.display = 'block';
+                    singleTime.value = task.time.time || '';
+                } else if (task.time && task.time.type === 'range') {
+                    document.querySelector('input[name="editTimeType"][value="range"]').checked = true;
+                    document.getElementById('editRangeTime').style.display = 'block';
+                    rangeStart.value = task.time.start || '';
+                    rangeEnd.value = task.time.end || '';
+                }
+                
+                const modal = document.getElementById('editTaskModal');
+                modal.style.display = 'block';
+                modal.style.opacity = '1';
+                
+                // Принудительная активация всех полей ввода
+                const inputs = modal.querySelectorAll('input, textarea, select');
+                inputs.forEach(input => {
+                    input.disabled = false;
+                    input.readOnly = false;
+                    input.style.pointerEvents = 'auto';
+                    input.style.touchAction = 'manipulation';
+                    input.setAttribute('data-tg-locked', 'false');
+                });
+                
+                // Снятие всех CSS-блокировок с модального окна
+                modal.style.pointerEvents = 'auto';
+                modal.style.touchAction = 'auto';
+                modal.style.userSelect = 'text';
+                modal.style.webkitUserSelect = 'text';
+                modal.style.msUserSelect = 'text';
+                
+                // Фокус на поле названия с максимальной задержкой
+                setTimeout(() => {
+                    const nameInput = document.getElementById('editTaskName');
+                    if (nameInput) {
+                        nameInput.disabled = false;
+                        nameInput.readOnly = false;
+                        nameInput.style.pointerEvents = 'auto';
+                        nameInput.style.touchAction = 'manipulation';
+                        nameInput.focus();
+                        nameInput.click();
+                        nameInput.select();
+                    }
+                    
+                    // Патч для Telegram Web Apps
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        try {
+                            window.Telegram.WebApp.MainButton.hide();
+                            window.Telegram.WebApp.disableClosingConfirmation();
+                            // Полный сброс состояния Telegram Web App
+                            if (typeof window.Telegram.WebApp.ready === 'function') {
+                                window.Telegram.WebApp.ready();
+                            }
+                        } catch(e) {}
+                    }
+                }, 300);
+                
+                // Дополнительные touch-обработчики для разблокировки ввода
+                const modalEl = document.getElementById('editTaskModal');
+                const unblock = function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // Попытка активировать поле при касании
+                    if (e.touches && e.touches.length > 0) {
+                        const target = e.target || e.touches[0].target;
+                        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+                            target.disabled = false;
+                            target.readOnly = false;
+                            target.focus();
+                        }
+                    }
+                };
+                modalEl.addEventListener('touchmove', unblock, { passive: false });
+                modalEl.addEventListener('touchstart', unblock, { passive: false });
+                modalEl.addEventListener('mousedown', unblock, { passive: false });
+                
+                // Инициируем событие клика для активации полей
+                setTimeout(() => {
+                    modal.dispatchEvent(new MouseEvent('touchstart', { bubbles: true, cancelable: true, view: window }));
+                    modal.dispatchEvent(new MouseEvent('touchmove', { bubbles: true, cancelable: true, view: window }));
+                    modal.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                    
+                    // И второй клик через 500мс
+                    setTimeout(() => {
+                        inputs.forEach(input => {
+                            input.style.pointerEvents = 'auto';
+                            input.focus();
+                        });
+                    }, 800);
+                }, 500);
+            }
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editTaskModal');
+            modal.style.display = 'none';
+            modal.style.opacity = '0';
+            document.body.style.overflow = '';
+            
+            // Полный сброс полей ввода
+            const inputs = modal.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.disabled = false;
+                input.readOnly = false;
+                input.style.pointerEvents = '';
+                input.style.touchAction = '';
+            });
+            
+            currentTask = null;
+        }
+
+        function saveTaskEdit() {
+            if (!currentTask) return;
+            
+            const title = document.getElementById('editTaskName').value.trim();
+            const desc = document.getElementById('editTaskDescription').value;
+            const dateStr = currentTask.dateStr;
+            
+            if (!title) {
+                alert('Введите название задачи');
+                return;
+            }
+            
+            const timeType = document.querySelector('input[name="editTimeType"]:checked');
+            let timeInfo = null;
+            if (timeType) {
+                if (timeType.value === 'single') {
+                    timeInfo = { type: 'single', time: document.getElementById('editTaskTime').value };
+                } else {
+                    timeInfo = { type: 'range', start: document.getElementById('editTaskTimeStart').value, end: document.getElementById('editTaskTimeEnd').value };
+                }
+            }
+            
+            // Обновляем задачу
+            const taskIndex = tasks[dateStr].findIndex(t => t.id === currentTask.taskId);
+            if (taskIndex !== -1) {
+                tasks[dateStr][taskIndex] = {
+                    id: currentTask.taskId,
+                    title: title,
+                    desc: desc,
+                    time: timeInfo,
+                    priority: currentTask.priority || 'low',
+                    createdAt: tasks[dateStr][taskIndex].createdAt || new Date().toISOString()
+                };
+            }
+            
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            document.getElementById('editTaskModal').style.display = 'none';
+            
+            renderTasksCalendar(currentDate);
+            updateTaskList();
+            currentTask = null;
+            
+            alert('✅ Задача обновлена!');
+        }
+
+        function deleteTaskFromView(taskId) {
+            if (!confirm('🗑️ Точно удалить задачу?')) return;
+            
+            const dateStr = formatDate(selectedDate);
+            tasks[dateStr] = tasks[dateStr].filter(t => t.id !== taskId);
+            if (tasks[dateStr].length === 0) delete tasks[dateStr];
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            renderTasksCalendar(currentDate);
+            updateTaskList();
+        }
+
+        function viewTasks() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('tasksView').style.display = 'block';
+            document.getElementById('tasksViewCalendar').style.display = 'block';
+            document.getElementById('tasksListContainer').style.display = 'none';
+            renderTasksCalendar(currentDate);
+        }
+        
+        function viewMeetings() { alert('Просмотр встреч - в разработке'); }
+
+        function prevMonthCal() { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(currentDate); }
+        function nextMonthCal() { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(currentDate); }
+        
+        function prevMonthTasks() { currentDate.setMonth(currentDate.getMonth() - 1); renderTasksCalendar(currentDate); }
+        function nextMonthTasks() { currentDate.setMonth(currentDate.getMonth() + 1); renderTasksCalendar(currentDate); }
+
+        function saveTask() {
+            if (!selectedDate) return;
+            const title = document.getElementById('taskTitle').value.trim();
+            const desc = document.getElementById('taskDesc').value;
+            const dateStr = formatDate(selectedDate);
+            
+            const timeType = document.querySelector('input[name="timeType"]:checked');
+            let timeInfo = null;
+            if (timeType) {
+                if (timeType.value === 'single') {
+                    timeInfo = { type: 'single', time: document.getElementById('taskTime').value };
+                } else {
+                    timeInfo = { type: 'range', start: document.getElementById('taskTimeStart').value, end: document.getElementById('taskTimeEnd').value };
+                }
+            }
+            
+            if (!title) { alert('Введите название задачи'); return; }
+            
+            const task = {
+                id: Date.now().toString(),
+                title: title,
+                desc: desc,
+                time: timeInfo,
+                createdAt: new Date().toISOString()
+            };
+            
+            if (!tasks[dateStr]) tasks[dateStr] = [];
+            tasks[dateStr].push(task);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            
+            if (tg) {
+                tg.sendData(JSON.stringify({ action: 'task_created', task: task, date: dateStr }));
+            }
+            
+            alert('Задача сохранена!');
+            backToCalendar();
+            renderCalendar(currentDate);
+            
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDesc').value = '';
+            document.getElementById('taskTime').value = '';
+            document.getElementById('taskTimeStart').value = '';
+            document.getElementById('taskTimeEnd').value = '';
+        }
+
+        function formatDisplayDate(date) {
+            const today = new Date();
+            if (formatDate(date) === formatDate(today)) return 'сегодня';
+            if (formatDate(date) === formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1))) return 'завтра';
+            return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth()+1).padStart(2, '0')}.${date.getFullYear()}`;
+        }
+
+        window.onload = function() {
+            initTelegram();
+            renderCalendar(currentDate);
+        };
+    </script>
+</body>
+</html>
