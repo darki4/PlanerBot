@@ -738,9 +738,6 @@
             return '';
         }
 
-        // Хранилище активных обработчиков для отпис
-        let activeModalHandlers = [];
-        
         function editTaskFromView(taskId) {
             const dateStr = formatDate(selectedDate);
             const task = (tasks[dateStr] || []).find(t => t.id === taskId);
@@ -754,86 +751,57 @@
         
         function openEditModal(task, dateStr) {
             currentTask = { taskId: task.id, dateStr: dateStr, task: task };
-                currentTask = { taskId: taskId, dateStr: dateStr, task: task };
-                
-                // Очистка предыдущих обработчиков
-                if (activeModalHandlers.length > 0) {
-                    const prevModal = document.getElementById('editTaskModal');
-                    activeModalHandlers.forEach(h => {
-                        if (h && h.element && h.handler) {
-                            prevModal.removeEventListener(h.element, h.handler);
-                        }
-                    });
-                    activeModalHandlers = [];
-                }
-                
-                // Предотвращаем скролл страницы при открытом модальном окне
-                document.body.style.overflow = 'hidden';
-                
-                document.getElementById('editTaskTitle').textContent = 'Редактирование задачи';
-                document.getElementById('editTaskName').value = task.title;
-                document.getElementById('editTaskDescription').value = task.desc || '';
-                
-                // Установим время
-                const singleTime = document.getElementById('editTaskTime');
-                const rangeStart = document.getElementById('editTaskTimeStart');
-                const rangeEnd = document.getElementById('editTaskTimeEnd');
-                
-                // Сброс временных полей
-                document.querySelectorAll('input[name="editTimeType"]').forEach(radio => radio.checked = false);
-                document.getElementById('editSingleTime').style.display = 'none';
-                document.getElementById('editRangeTime').style.display = 'none';
-                
-                if (task.time && task.time.type === 'single') {
-                    document.querySelector('input[name="editTimeType"][value="single"]').checked = true;
-                    document.getElementById('editSingleTime').style.display = 'block';
-                    singleTime.value = task.time.time || '';
-                } else if (task.time && task.time.type === 'range') {
-                    document.querySelector('input[name="editTimeType"][value="range"]').checked = true;
-                    document.getElementById('editRangeTime').style.display = 'block';
-                    rangeStart.value = task.time.start || '';
-                    rangeEnd.value = task.time.end || '';
-                }
-                
-                const modal = document.getElementById('editTaskModal');
-                modal.style.display = 'block';
-                modal.style.opacity = '1';
-                
-                // Принудительная активация всех полей ввода
-                const inputs = modal.querySelectorAll('input, textarea, select');
-                inputs.forEach(input => {
-                    input.disabled = false;
-                    input.readOnly = false;
-                    input.style.pointerEvents = 'auto';
-                    input.style.touchAction = 'auto';
-                });
-                
-                // Снятие блокировки с модального окна
-                modal.style.pointerEvents = 'auto';
-                modal.style.touchAction = 'auto';
-                
-                // Фокус на поле названия с задержкой
-                setTimeout(() => {
-                    const nameInput = document.getElementById('editTaskName');
-                    if (nameInput) {
-                        nameInput.disabled = false;
-                        nameInput.readOnly = false;
-                        nameInput.style.pointerEvents = 'auto';
-                        nameInput.focus();
-                    }
-                    
-                    // Патч для Telegram Web Apps
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        try {
-                            window.Telegram.WebApp.MainButton.hide();
-                            window.Telegram.WebApp.disableClosingConfirmation();
-                            if (typeof window.Telegram.WebApp.ready === 'function') {
-                                window.Telegram.WebApp.ready();
-                            }
-                        } catch(e) {}
-                    }
-                }, 200);
+            
+            // Предотвращаем скролл страницы при открытом модальном окне
+            document.body.style.overflow = 'hidden';
+            
+            document.getElementById('editTaskTitle').textContent = 'Редактирование задачи';
+            document.getElementById('editTaskName').value = task.title;
+            document.getElementById('editTaskDescription').value = task.desc || '';
+            
+            // Установим время
+            const singleTime = document.getElementById('editTaskTime');
+            const rangeStart = document.getElementById('editTaskTimeStart');
+            const rangeEnd = document.getElementById('editTaskTimeEnd');
+            
+            // Сброс временных полей
+            document.querySelectorAll('input[name="editTimeType"]').forEach(radio => radio.checked = false);
+            document.getElementById('editSingleTime').style.display = 'none';
+            document.getElementById('editRangeTime').style.display = 'none';
+            
+            if (task.time && task.time.type === 'single') {
+                document.querySelector('input[name="editTimeType"][value="single"]').checked = true;
+                document.getElementById('editSingleTime').style.display = 'block';
+                singleTime.value = task.time.time || '';
+            } else if (task.time && task.time.type === 'range') {
+                document.querySelector('input[name="editTimeType"][value="range"]').checked = true;
+                document.getElementById('editRangeTime').style.display = 'block';
+                rangeStart.value = task.time.start || '';
+                rangeEnd.value = task.time.end || '';
             }
+            
+            const modal = document.getElementById('editTaskModal');
+            modal.style.display = 'block';
+            modal.style.opacity = '1';
+            
+            // Принудительная активация всех полей ввода
+            const inputs = modal.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.disabled = false;
+                input.readOnly = false;
+                input.style.pointerEvents = 'auto';
+                input.style.touchAction = 'auto';
+            });
+            
+            // Фокус на поле названия с задержкой
+            setTimeout(() => {
+                const nameInput = document.getElementById('editTaskName');
+                if (nameInput) {
+                    nameInput.disabled = false;
+                    nameInput.readOnly = false;
+                    nameInput.focus();
+                }
+            }, 200);
         }
 
         function closeEditModal() {
