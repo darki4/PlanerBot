@@ -377,9 +377,8 @@
                 <label class="form-label">Описание задачи</label>
                 <textarea class="form-input" id="editTaskDescription" placeholder="Введите описание задачи" rows="3"></textarea>
             </div>
-            <input type="hidden" id="editTaskId">
-            <div style="margin: 15px 0;">
-                <label class="form-label" style="display: block; margin-bottom: 8px; color: #94a3b8;">Время выполнения</label>
+            <div class="form-group">
+                <label class="form-label">Время выполнения</label>
                 <div class="time-toggle">
                     <label class="time-option">
                         <input type="radio" name="editTimeType" class="time-radio" value="single" onchange="toggleTimeType('edit', this.value)">
