@@ -902,9 +902,8 @@
             closeEditModal();
             renderTasksCalendar(currentDate);
             updateTaskList();
-            alert('✅ Задача обновлена!');
-            
             resetTelegramState();
+            alert('✅ Задача обновлена!');
         }
 
         function deleteTaskFromView(taskId) {
@@ -1088,10 +1087,6 @@
             tasks[dateStr].push(task);
             localStorage.setItem('tasks', JSON.stringify(tasks));
             
-            if (tg) {
-                tg.sendData(JSON.stringify({ action: 'task_created', task: task, date: dateStr }));
-            }
-            
             alert('✅ Задача сохранена!');
             
             document.getElementById('taskForm').style.display = 'none';
@@ -1103,8 +1098,9 @@
             document.getElementById('taskTimeStart').value = '';
             document.getElementById('taskTimeEnd').value = '';
             
-            renderCalendar(currentDate);
             resetTelegramState();
+            renderCalendar(currentDate);
+            alert('✅ Задача сохранена!');
         }
 
         function formatDisplayDate(date) {
