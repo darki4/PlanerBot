@@ -791,18 +791,20 @@
                 modal.style.display = 'block';
                 modal.style.opacity = '1';
                 
-                // Принудительная активация всех полей ввода без кликов на другие элементы
+                // Принудительная активация всех полей ввода
                 const inputs = modal.querySelectorAll('input, textarea, select');
                 inputs.forEach(input => {
                     input.disabled = false;
                     input.readOnly = false;
                     input.style.pointerEvents = 'auto';
-                    input.style.touchAction = 'manipulation';
-                    input.style.zIndex = '9999';
-                    input.style.position = 'relative';
+                    input.style.touchAction = 'auto';
                 });
                 
-                // Фокус на поле названия через 300ms
+                // Снятие блокировки с модального окна
+                modal.style.pointerEvents = 'auto';
+                modal.style.touchAction = 'auto';
+                
+                // Фокус на поле названия с задержкой
                 setTimeout(() => {
                     const nameInput = document.getElementById('editTaskName');
                     if (nameInput) {
@@ -822,7 +824,7 @@
                             }
                         } catch(e) {}
                     }
-                }, 300);
+                }, 200);
             }
         }
 
