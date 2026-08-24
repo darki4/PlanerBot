@@ -519,7 +519,6 @@
                     tg.sendData(JSON.stringify({ tasks: tasks[dateStr] || [], selectedDate: dateStr }));
                 });
                 
-                // Исправлено: используем initDataUnsafe.user для имени
                 const user = tg.initDataUnsafe?.user;
                 console.log('Telegram user:', user);
                 
@@ -529,6 +528,9 @@
                     userNameEl.textContent = firstName || 'Пользователь';
                 }
             }
+            
+            // Немедленный сброс состояния при инициализации
+            resetTelegramState();
         }
 
         function formatDate(date) {
@@ -884,7 +886,6 @@
                 }
             }
             
-            // Обновляем задачу
             const taskIndex = tasks[dateStr].findIndex(t => t.id === currentTask.taskId);
             if (taskIndex !== -1) {
                 tasks[dateStr][taskIndex] = {
@@ -899,14 +900,12 @@
             
             localStorage.setItem('tasks', JSON.stringify(tasks));
             
-            // Используем closeEditModal для корректного сброса состояния
             closeEditModal();
-            
             renderTasksCalendar(currentDate);
             updateTaskList();
+            alert('✅ Задача обновлена!');
             
             resetTelegramState();
-            alert('✅ Задача обновлена!');
         }
 
         function deleteTaskFromView(taskId) {
@@ -1017,29 +1016,50 @@
         function nextMonthTasks() { currentDate.setMonth(currentDate.getMonth() + 1); renderTasksCalendar(currentDate); }
 
          function resetTelegramState() {
+            // Немедленный сброс
+            document.body.style.overflow = 'auto';
+            document.body.style.pointerEvents = 'auto';
+            document.body.style.touchAction = 'auto';
+            const allInputs = document.querySelectorAll('input, textarea, select, button');
+            allInputs.forEach(el => {
+                el.disabled = false;
+                el.readOnly = false;
+                el.style.pointerEvents = 'auto';
+                el.style.touchAction = 'auto';
+            });
+            
+            // Сброс состояния Telegram Web Apps
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    if (typeof window.Telegram.WebApp.ready === 'function') {
+                        window.Telegram.WebApp.ready();
+                    }
+                    if (window.Telegram.WebApp.MainButton) {
+                        window.Telegram.WebApp.MainButton.hide();
+                    }
+                    if (window.Telegram.WebApp.close) {
+                        // Не вызываем close, просто сбрасываем состояние
+                    }
+                } catch(e) {}
+            }
+            
+            // Дополнительный сброс через небольшую задержку для Telegram
             setTimeout(() => {
-                // Полный сброс всех стилей блокировки
-                document.body.style.overflow = '';
-                const allInputs = document.querySelectorAll('input, textarea, select, button');
+                document.body.style.overflow = 'auto';
+                document.body.style.pointerEvents = 'auto';
+                document.body.style.touchAction = 'auto';
                 allInputs.forEach(el => {
                     el.disabled = false;
                     el.readOnly = false;
-                    el.style.pointerEvents = '';
-                    el.style.touchAction = '';
+                    el.style.pointerEvents = 'auto';
+                    el.style.touchAction = 'auto';
                 });
-                
-                // Сброс состояния Telegram Web Apps
-                if (window.Telegram && window.Telegram.WebApp) {
+                if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.ready === 'function') {
                     try {
-                        if (typeof window.Telegram.WebApp.ready === 'function') {
-                            window.Telegram.WebApp.ready();
-                        }
-                        if (window.Telegram.WebApp.MainButton) {
-                            window.Telegram.WebApp.MainButton.hide();
-                        }
+                        window.Telegram.WebApp.ready();
                     } catch(e) {}
                 }
-            }, 500);
+            }, 300);
         }
 
         function saveTask() {
@@ -1078,7 +1098,6 @@
             
             alert('✅ Задача сохранена!');
             
-            // Полный сброс и возврат в календарь
             document.getElementById('taskForm').style.display = 'none';
             document.getElementById('taskCalendarContainer').style.display = 'block';
             
