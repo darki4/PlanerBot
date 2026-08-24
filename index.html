@@ -313,6 +313,7 @@
         </div>
         <div class="footer">
             <div class="footer-item active" onclick="openScheduleSettings()"><span>📅</span><span>Расписание</span></div>
+            <div class="footer-item" onclick="openScheduleSettings()"><span>⚙️</span><span>Настройки</span></div>
         </div>
     </div>
 
@@ -447,21 +448,21 @@
             <div class="tasks-list-date" id="tasksListDate"></div>
             <div id="tasksListView"></div>
         </div>
+    </div>
 
-        <!-- Настройки расписания -->
-        <div class="schedule-settings-view" id="scheduleSettingsView" style="display:none;">
-            <div class="schedule-header">
-                <button class="back-btn" onclick="backToMenuFromSettings()">←</button>
-                <h2 style="font-size: 1.5em; margin: 10px 0; text-align: center;">Настройки расписания</h2>
-            </div>
-            <div class="schedule-section">
-                <h3 style="margin-bottom: 15px; color: #cbd5e1;">Рабочие часы</h3>
-                <div id="scheduleSettingsContent"></div>
-            </div>
-            <div class="form-actions" style="margin-top: 20px;">
-                <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
-                <button class="btn-submit" onclick="saveScheduleSettings()">Сохранить</button>
-            </div>
+    <!-- Настройки расписания -->
+    <div class="schedule-settings-view" id="scheduleSettingsView" style="display:none;">
+        <div class="schedule-header">
+            <button class="back-btn" onclick="backToMenuFromSettings()">←</button>
+            <h2 style="font-size: 1.5em; margin: 10px 0; text-align: center;">Настройки расписания</h2>
+        </div>
+        <div class="schedule-section">
+            <h3 style="margin-bottom: 15px; color: #cbd5e1;">Рабочие часы</h3>
+            <div id="scheduleSettingsContent"></div>
+        </div>
+        <div class="form-actions" style="margin-top: 20px;">
+            <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
+            <button class="btn-submit" onclick="saveScheduleSettings()">Сохранить</button>
         </div>
     </div>
 
@@ -927,11 +928,11 @@
         
         function viewMeetings() { alert('Просмотр встреч - в разработке'); }        
         function openScheduleSettings() {
+            resetTelegramState();
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('tasksListContainer').style.display = 'none';
             document.getElementById('scheduleSettingsView').style.display = 'block';
             loadScheduleSettings();
-            resetTelegramState();
         }
         
         function backToMenuFromSettings() {
@@ -988,10 +989,7 @@
                 </div>`;
             });
             document.getElementById('scheduleSettingsContent').innerHTML = html;
-            
-            setTimeout(() => {
-                resetTelegramState();
-            }, 300);
+            resetTelegramState();
         }
         
         function getDayName(day) {
