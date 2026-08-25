@@ -709,6 +709,16 @@
         }
 
         function createTask() {
+            // Синхронный сброс Telegram WebApp state при открытии формы
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    window.Telegram.WebApp.MainButton.hide();
+                    if (typeof window.Telegram.WebApp.ready === 'function') {
+                        window.Telegram.WebApp.ready();
+                    }
+                } catch(e) {}
+            }
+            
             document.getElementById('mainMenu').style.display = 'none';
             renderCalendar(currentDate);
             document.getElementById('taskCalendarContainer').style.display = 'block';
@@ -725,23 +735,13 @@
                     input.style.userSelect = 'text';
                     input.style.webkitUserSelect = 'text';
                 });
-                
-                // Фокус на поле названия задачи
                 const titleInput = document.getElementById('taskTitle');
                 if (titleInput) {
                     titleInput.focus();
                 }
-                
-                // Патч для Telegram Web Apps
-                if (window.Telegram && window.Telegram.WebApp) {
-                    try {
-                        window.Telegram.WebApp.MainButton.hide();
-                        if (typeof window.Telegram.WebApp.ready === 'function') {
-                            window.Telegram.WebApp.ready();
-                        }
-                    } catch(e) {}
-                }
-            }, 300);
+                document.body.style.pointerEvents = 'auto';
+                document.body.style.overflow = 'auto';
+            }, 100);
         }
         
         function createMeeting() { alert('Создание встречи - в разработке'); }
@@ -835,16 +835,28 @@
             modal.style.display = 'block';
             modal.style.opacity = '1';
             
-            // Принудительная активация всех полей ввода
+            // Синхронный сброс Telegram WebApp state
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    window.Telegram.WebApp.MainButton.hide();
+                    if (typeof window.Telegram.WebApp.ready === 'function') {
+                        window.Telegram.WebApp.ready();
+                    }
+                } catch(e) {}
+            }
+            
+            document.body.style.pointerEvents = 'auto';
+            document.body.style.touchAction = 'manipulation';
+            document.body.style.overflow = 'auto';
+            
             const inputs = modal.querySelectorAll('input, textarea, select');
             inputs.forEach(input => {
                 input.disabled = false;
                 input.readOnly = false;
                 input.style.pointerEvents = 'auto';
-                input.style.touchAction = 'auto';
+                input.style.touchAction = 'manipulation';
             });
             
-            // Фокус на поле названия с задержкой
             setTimeout(() => {
                 const nameInput = document.getElementById('editTaskName');
                 if (nameInput) {
@@ -859,32 +871,27 @@
             const modal = document.getElementById('editTaskModal');
             modal.style.display = 'none';
             modal.style.opacity = '0';
-            document.body.style.overflow = '';
+            document.body.style.overflow = 'auto';
+            document.body.style.pointerEvents = 'auto';
+            document.body.style.touchAction = 'manipulation';
             
-            // Полный сброс полей ввода
             const inputs = modal.querySelectorAll('input, textarea, select');
             inputs.forEach(input => {
                 input.disabled = false;
                 input.readOnly = false;
-                input.style.pointerEvents = '';
-                input.style.touchAction = '';
+                input.style.pointerEvents = 'auto';
+                input.style.touchAction = 'manipulation';
             });
             
-            // Принудительный сброс состояния Telegram Web Apps
             setTimeout(() => {
-                if (window.Telegram && window.Telegram.WebApp) {
+                if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.ready === 'function') {
                     try {
-                        // Полный сброс Telegram Web App
-                        if (typeof window.Telegram.WebApp.ready === 'function') {
-                            window.Telegram.WebApp.ready();
-                        }
+                        window.Telegram.WebApp.ready();
                     } catch(e) {}
                 }
             }, 100);
-            
-            currentTask = null;
         }
-
+        
         function saveTaskEdit() {
             if (!currentTask) return;
             
@@ -921,6 +928,7 @@
             
             localStorage.setItem('tasks', JSON.stringify(tasks));
             
+            currentTask = null;
             closeEditModal();
             renderTasksCalendar(currentDate);
             updateTaskList();
