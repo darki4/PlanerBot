@@ -178,6 +178,16 @@
         .schedule-checkbox { width: 20px; height: 20px; cursor: pointer; }
         .schedule-row:last-child { margin-bottom: 0; }
         
+        .schedule-settings-row { display: flex; flex-direction: column; gap: 15px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
+        .setting-item { position: relative; background: #2d2d3a; padding: 12px 15px; border-radius: 8px; }
+        .setting-label { display: block; color: #94a3b8; font-size: 0.85em; margin-bottom: 4px; }
+        .setting-value { display: block; color: #e2e8f0; font-weight: 600; cursor: pointer; }
+        .dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #2d2d3a; border-radius: 8px; padding: 8px; z-index: 100; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .dropdown-item { padding: 8px 12px; color: #e2e8f0; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
+        .dropdown-item:hover { background: #334155; }
+        .dropdown.show { display: block !important; }
+        .dropdown { display: none; }
+        
         @media (max-width: 380px) {
             .schedule-row { grid-template-columns: 130px 1fr 100px; gap: 6px; }
             .schedule-day { min-width: 110px; font-size: 0.9em; }
@@ -461,6 +471,30 @@
                 <div class="weekday">Вс</div>
             </div>
             <div class="days-grid" id="tasksViewCalendarDays"></div>
+        </div>
+        
+        <!-- Настройки расписания (длительность и лимит) -->
+        <div class="schedule-settings-row">
+            <div class="setting-item">
+                <span class="setting-label">Длительность встречи</span>
+                <span class="setting-value" id="meetingDuration" onclick="toggleDropdown('durationDropdown')">60 мин.</span>
+                <div class="dropdown" id="durationDropdown">
+                    <div class="dropdown-item" onclick="setMeetingDuration(10)">10 мин</div>
+                    <div class="dropdown-item" onclick="setMeetingDuration(15)">15 мин</div>
+                    <div class="dropdown-item" onclick="setMeetingDuration(20)">20 мин</div>
+                    <div class="dropdown-item" onclick="setMeetingDuration(30)">30 мин</div>
+                    <div class="dropdown-item" onclick="setMeetingDuration(45)">45 мин</div>
+                    <div class="dropdown-item" onclick="setMeetingDuration(60)">60 мин</div>
+                </div>
+            </div>
+            <div class="setting-item">
+                <span class="setting-label">Лимит событий</span>
+                <span class="setting-value" id="eventLimit" onclick="toggleDropdown('limitDropdown')">Не установлен</span>
+                <div class="dropdown" id="limitDropdown">
+                    <input type="number" class="form-input" id="eventLimitInput" min="1" max="20" placeholder="Введите количество">
+                    <button class="btn-submit" onclick="setEventLimit()">Готово</button>
+                </div>
+            </div>
         </div>
         
         <!-- Список задач выбранного дня -->
@@ -1040,6 +1074,69 @@
                 'sunday': 'Воскресенье'
             };
             return names[day] || day;
+        }
+        
+        let meetingDuration = localStorage.getItem('meetingDuration') || 60;
+        let eventLimit = localStorage.getItem('eventLimit') || 'Не установлен';
+        
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            dropdown.classList.toggle('show');
+            if (dropdown.classList.contains('show')) {
+                resetTelegramState();
+            }
+        }
+        
+        function setMeetingDuration(minutes) {
+            meetingDuration = minutes;
+            localStorage.setItem('meetingDuration', minutes);
+            document.getElementById('meetingDuration').textContent = `${minutes} мин.`;
+            document.getElementById('durationDropdown').classList.remove('show');
+        }
+        
+        function setEventLimit() {
+            const input = document.getElementById('eventLimitInput');
+            const value = input.value.trim();
+            if (value) {
+                eventLimit = value;
+                localStorage.setItem('eventLimit', value);
+                document.getElementById('eventLimit').textContent = `${value} встреч`;
+            } else {
+                eventLimit = 'Не установлен';
+                localStorage.removeItem('eventLimit');
+                document.getElementById('eventLimit').textContent = 'Не установлен';
+            }
+            document.getElementById('limitDropdown').classList.remove('show');
+        }
+        
+        function loadScheduleSettings() {
+            const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            let html = '';
+            days.forEach(day => {
+                const daySettings = settings[day] || {};
+                const working = daySettings.working !== undefined ? daySettings.working : (['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day));
+                const start = daySettings.start || '09:00';
+                const end = daySettings.end || '18:00';
+                
+                html += `<div class="schedule-row">
+                    <div class="schedule-day">${getDayName(day)}</div>
+                    <div class="schedule-time">
+                        <input type="time" class="form-input" value="${start}" onchange="updateDayTime('${day}', 'start', this.value)">
+                        <span style="color: #94a3b8; margin: 0 8px;">—</span>
+                        <input type="time" class="form-input" value="${end}" onchange="updateDayTime('${day}', 'end', this.value)">
+                    </div>
+                    <div class="schedule-check">
+                        <input type="checkbox" class="schedule-checkbox" ${working ? 'checked' : ''} onchange="toggleWorkingDay('${day}')">
+                    </div>
+                </div>`;
+            });
+            document.getElementById('scheduleSettingsContent').innerHTML = html;
+            
+            document.getElementById('meetingDuration').textContent = `${meetingDuration} мин.`;
+            document.getElementById('eventLimit').textContent = eventLimit === 'Не установлен' ? 'Не установлен' : `${eventLimit} встреч`;
+            
+            resetTelegramState();
         }
 
         function prevMonthCal() { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(currentDate); }
