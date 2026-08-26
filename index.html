@@ -601,6 +601,15 @@
                 <span class="detail-value" id="meetingInviteText" style="font-size: 0.85em; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">Стандартный</span>
             </div>
             <div class="meeting-detail-item">
+                <span class="detail-icon">👥</span>
+                <span class="detail-label">Участники</span>
+                <div id="meetingParticipants" style="display: flex; flex-wrap: wrap; gap: 8px; max-width: 200px;">
+                    <span style="color: #94a3b8; font-size: 0.85em;">Никто не добавлен</span>
+                </div>
+                <input type="text" class="form-input" id="meetingParticipantInput" placeholder="Добавить участника (@username)" style="margin-top: 8px;">
+                <button class="btn-submit" onclick="addParticipant()" style="margin-top: 5px; font-size: 0.85em;">Добавить</button>
+            </div>
+            <div class="meeting-detail-item">
                 <input type="text" class="form-input" id="meetingComment" placeholder="Комментарий к встрече">
             </div>
         </div>
@@ -1069,7 +1078,43 @@
             }
         }
         
-        function updateMeetingTimezone() {
+function addParticipant() {
+        const input = document.getElementById('meetingParticipantInput');
+        const username = input.value.trim().replace('@', '');
+        if (!username) return;
+        
+        if (!currentMeeting.participants) currentMeeting.participants = [];
+        if (currentMeeting.participants.includes(username)) {
+            alert('Этот участник уже добавлен');
+            return;
+        }
+        
+        currentMeeting.participants.push(username);
+        renderParticipants();
+        input.value = '';
+    }
+    
+    function renderParticipants() {
+        const container = document.getElementById('meetingParticipants');
+        if (!currentMeeting.participants || currentMeeting.participants.length === 0) {
+            container.innerHTML = '<span style="color: #94a3b8; font-size: 0.85em;">Никто не добавлен</span>';
+            return;
+        }
+        
+        let html = '';
+        currentMeeting.participants.forEach(p => {
+            html += `<span style="background: #334155; padding: 4px 8px; border-radius: 6px; color: #e2e8f0; font-size: 0.85em; display: flex; align-items: center; gap: 4px;">@${p} <span onclick="removeParticipant('${p}')" style="cursor: pointer; color: #ef4444;">×</span></span>`;
+        });
+        container.innerHTML = html;
+    }
+    
+    function removeParticipant(username) {
+        if (!currentMeeting.participants) return;
+        currentMeeting.participants = currentMeeting.participants.filter(p => p !== username);
+        renderParticipants();
+    }
+
+    function updateMeetingTimezone() {
             currentMeeting.timezone = document.getElementById('meetingTimezone').value;
             document.getElementById('meetingTimezoneDisplay').textContent = currentMeeting.timezone;
         }
@@ -1178,6 +1223,7 @@
                 endTime: currentMeeting.endTime,
                 timezone: currentMeeting.timezone || 'Europe/Moscow',
                 status: 'active',
+                participants: currentMeeting.participants || [],
                 createdAt: new Date().toISOString()
             };
             
@@ -1188,6 +1234,59 @@
             
             alert('✅ Встреча создана!');
             backToMenu();
+        }
+        
+        function exportMeetingICS(meetingId) {
+            const allTasks = JSON.parse(localStorage.getItem('tasks') || {});
+            let meeting = null;
+            let dateStr = null;
+            
+            for (const [ds, items] of Object.entries(allTasks)) {
+                const found = items.find(t => t.id === meetingId);
+                if (found) {
+                    meeting = found;
+                    dateStr = ds;
+                    break;
+                }
+            }
+            
+            if (!meeting) return;
+            
+            const dateParts = dateStr.split('-').map(Number);
+            const startParts = meeting.startTime.split(':').map(Number);
+            const endParts = meeting.endTime.split(':').map(Number);
+            
+            const startDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], startParts[0], startParts[1]);
+            const endDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], endParts[0], endParts[1]);
+            
+            function formatICSDate(date) {
+                return date.getFullYear() + 
+                       String(date.getMonth() + 1).padStart(2, '0') + 
+                       String(date.getDate()).padStart(2, '0') + 'T' + 
+                       String(date.getHours()).padStart(2, '0') + 
+                       String(date.getMinutes()).padStart(2, '0') + '00';
+            }
+            
+            const icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//PlanerBot//RU',
+                'BEGIN:VEVENT',
+                'SUMMARY:' + (meeting.title || 'Встреча'),
+                'DESCRIPTION:' + (meeting.desc || ''),
+                'DTSTART:' + formatICSDate(startDate),
+                'DTEND:' + formatICSDate(endDate),
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ].join('\n');
+            
+            const blob = new Blob([icsContent], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `meeting_${meeting.id}.ics`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         function renderTasksCalendar(date) {
@@ -1335,7 +1434,8 @@
                 startTime: null,
                 endTime: null,
                 timezone: savedTz || 'Europe/Moscow',
-                comment: ''
+                comment: '',
+                participants: []
             };
             if (savedTz) {
                 document.getElementById('meetingTimezone').value = savedTz;
@@ -1641,9 +1741,12 @@
                         <div class="task-desc">${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}</div>
                         <div class="task-desc" style="color: ${statusColor}; font-size: 0.85em;">Статус: ${statusLabel}</div>
                         ${meeting.desc ? `<div class="task-desc">${meeting.desc}</div>` : ''}
+                        ${meeting.participants && meeting.participants.length > 0 ? 
+                            `<div class="task-desc">👥 ${meeting.participants.join(', ')}</div>` : ''}
                         <div style="margin-top: 8px; display: flex; gap: 8px;">
                             <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px;" onclick="changeMeetingStatus('${meeting.id}', 'completed')">✓ Завершить</button>
                             <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px;" onclick="changeMeetingStatus('${meeting.id}', 'cancelled')">✕ Отменить</button>
+                            <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px;" onclick="exportMeetingICS('${meeting.id}')">📤 Экспорт</button>
                             <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px; margin-left: auto;" onclick="deleteMeeting('${meeting.id}')">🗑️ Удалить</button>
                         </div>
                     </div>`;
