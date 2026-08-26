@@ -299,6 +299,19 @@
             margin-bottom: 15px; 
         }
         .tasks-view-title { font-size: 1.3em; font-weight: 600; }
+        .meeting-form { display: none; }
+        .timezone-selector { margin: 15px 0; }
+        .meeting-time-selection { margin-top: 20px; }
+        .date-display { color: #34d399; font-weight: 600; }
+        .time-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px; }
+        .time-slot { background: #334155; border: 1px solid #444; border-radius: 8px; padding: 12px; text-align: center; color: #e2e8f0; cursor: pointer; transition: background 0.2s; }
+        .time-slot:hover { background: #34d399; color: #1e293b; }
+        .time-slot.selected { background: #34d399; color: #1e293b; font-weight: 600; }
+        .meeting-details { margin-top: 20px; }
+        .meeting-detail-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #334155; }
+        .detail-icon { font-size: 1.2em; min-width: 24px; }
+        .detail-label { color: #94a3b8; flex: 1; }
+        .detail-value { color: #e2e8f0; }
         .tasks-list-container { margin-top: 15px; }
         .tasks-list-date { color: #34d399; font-weight: 600; margin-bottom: 15px; }
         .task-item-view { 
@@ -446,6 +459,97 @@
         </div>
     </div>
 
+    <!-- Создание встречи -->
+    <div class="meeting-form" id="meetingForm">
+        <div class="tasks-view-header">
+            <button class="back-btn" onclick="backToMenu()">←</button>
+            <div class="tasks-view-title">Создать встречу</div>
+            <div style="width: 24px;"></div>
+        </div>
+        
+        <!-- Выбор даты -->
+        <div class="calendar-container" id="meetingCalendarContainer">
+            <div class="calendar-header">
+                <button class="month-btn" onclick="prevMonthMeeting()">‹</button>
+                <div class="month-title" id="meetingCalendarMonth">Август 2026</div>
+                <button class="month-btn" onclick="nextMonthMeeting()">›</button>
+            </div>
+            <div class="weekdays">
+                <div class="weekday">Пн</div>
+                <div class="weekday">Вт</div>
+                <div class="weekday">Ср</div>
+                <div class="weekday">Чт</div>
+                <div class="weekday">Пт</div>
+                <div class="weekday">Сб</div>
+                <div class="weekday">Вс</div>
+            </div>
+            <div class="days-grid" id="meetingCalendarDays"></div>
+        </div>
+        
+        <!-- Выбор часового пояса -->
+        <div class="timezone-selector">
+            <select class="form-input" id="meetingTimezone" onchange="updateMeetingTimezone()">
+                <option value="Europe/Moscow">Europe/Moscow (Москва)</option>
+                <option value="Europe/Samara">Europe/Samara (Самара)</option>
+                <option value="Europe/Kaliningrad">Europe/Kaliningrad (Калининград)</option>
+                <option value="Asia/Vladivostok">Asia/Vladivostok (Владивосток)</option>
+                <option value="UTC">UTC</option>
+            </select>
+        </div>
+        
+        <!-- Окно выбора времени (появляется после выбора даты) -->
+        <div class="meeting-time-selection" id="meetingTimeSelection" style="display:none;">
+            <h3 class="date-display" id="meetingSelectedDate">четверг, 27 августа</h3>
+            <p style="color: #94a3b8; margin-bottom: 10px;">Выберите время</p>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Продолжительность: <span id="meetingDurationDisplay">1 час</span></p>
+            
+            <div class="time-slots" id="timeSlots">
+                <!-- Сгенерированные ячейки со временем -->
+            </div>
+        </div>
+        
+        <!-- Окно деталей встречи -->
+        <div class="meeting-details" id="meetingDetails" style="display:none;">
+            <div class="meeting-detail-item">
+                <span class="detail-icon">📹</span>
+                <span class="detail-label">Видеосвязь</span>
+                <span class="detail-value">Встреча</span>
+            </div>
+            <div class="meeting-detail-item">
+                <span class="detail-icon">👤</span>
+                <span class="detail-label">Участник</span>
+                <span class="detail-value" id="meetingParticipant">Пользователь</span>
+            </div>
+            <div class="meeting-detail-item" onclick="openDateChange('start')">
+                <span class="detail-icon">📅</span>
+                <span class="detail-label">Дата и время начала</span>
+                <span class="detail-value" id="meetingStartTime">---</span>
+            </div>
+            <div class="meeting-detail-item" onclick="openDateChange('end')">
+                <span class="detail-icon">📅</span>
+                <span class="detail-label">Дата и время завершения</span>
+                <span class="detail-value" id="meetingEndTime">---</span>
+            </div>
+            <div class="meeting-detail-item">
+                <span class="detail-icon">🌍</span>
+                <span class="detail-label">Часовой пояс</span>
+                <span class="detail-value" id="meetingTimezoneDisplay">Europe/Moscow</span>
+            </div>
+            <div class="meeting-detail-item">
+                <span class="detail-icon">💬</span>
+                <span class="detail-label">Приветствие</span>
+                <span class="detail-value" id="meetingInviteText" style="font-size: 0.85em; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">Стандартный</span>
+            </div>
+            <div class="meeting-detail-item">
+                <input type="text" class="form-input" id="meetingComment" placeholder="Комментарий к встрече">
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button class="btn-submit" onclick="saveMeeting()">Создать встречу</button>
+        </div>
+    </div>
+
     <!-- Страница "Созданные задачи" -->
     <div class="tasks-view" id="tasksView">
         <div class="tasks-view-header">
@@ -539,6 +643,7 @@
         let tg;
         let currentDate = new Date();
         let selectedDate = null;
+        let currentMeeting = null;
         const APP_VERSION = '20260824-v1';
         
         // Проверка версии и очистка устаревшего кэша
@@ -669,7 +774,148 @@
             document.getElementById('calendarDays').innerHTML = daysHTML;
         }
 
-        function renderTasksCalendar(date) {
+        function renderMeetingCalendar(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            document.getElementById('meetingCalendarMonth').textContent = MONTH_NAMES[month] + ' ' + year;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            
+            let daysHTML = '';
+            for (let i = 0; i < adjustedFirstDay; i++) {
+                daysHTML += '<div class="day-cell other-month"></div>';
+            }
+            for (let d = 1; d <= lastDate; d++) {
+                const today = new Date();
+                const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const isPast = new Date(year, month, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                let classes = 'day-cell';
+                if (isToday) classes += ' today';
+                if (currentMeeting && currentMeeting.selectedDate && formatDate(currentMeeting.selectedDate) === formatDate(new Date(year, month, d))) classes += ' selected';
+                if (isPast) classes += ' past';
+                daysHTML += `<div class="${classes}" onclick="selectMeetingDate(${year}, ${month + 1}, ${d})">
+                    <div class="day-number">${d}</div>
+                </div>`;
+            }
+            document.getElementById('meetingCalendarDays').innerHTML = daysHTML;
+        }
+        
+        function prevMonthMeeting() { currentDate.setMonth(currentDate.getMonth() - 1); renderMeetingCalendar(currentDate); }
+        function nextMonthMeeting() { currentDate.setMonth(currentDate.getMonth() + 1); renderMeetingCalendar(currentDate); }
+        
+        function selectMeetingDate(year, month, day) {
+            if (!currentMeeting) currentMeeting = {};
+            currentMeeting.selectedDate = new Date(year, month - 1, day);
+            document.getElementById('meetingTimeSelection').style.display = 'block';
+            document.getElementById('meetingDetails').style.display = 'none';
+            renderTimeSlots(currentMeeting.selectedDate);
+            
+            // Форматирование даты
+            const date = currentMeeting.selectedDate;
+            const dayNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+            const formatted = `${dayNames[date.getDay() === 0 ? 6 : date.getDay() - 1]}, ${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
+            document.getElementById('meetingSelectedDate').textContent = formatted;
+        }
+        
+        function renderTimeSlots(date) {
+            const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
+            const daysMap = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const dayKey = daysMap[date.getDay() === 0 ? 6 : date.getDay() - 1];
+            const daySettings = settings[dayKey] || {};
+            const start = daySettings.start || '09:00';
+            const end = daySettings.end || '18:00';
+            const working = daySettings.working !== undefined ? daySettings.working : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(dayKey);
+            
+            const duration = parseInt(localStorage.getItem('meetingDuration') || '60');
+            const durationDisplay = duration >= 60 ? `${duration / 60} час` : `${duration} мин`;
+            document.getElementById('meetingDurationDisplay').textContent = durationDisplay;
+            
+            // Генерация интервалов времени
+            let hoursHTML = '';
+            if (working) {
+                const [startH, startM] = start.split(':').map(Number);
+                const [endH, endM] = end.split(':').map(Number);
+                const startMinutes = startH * 60 + startM;
+                const endMinutes = endH * 60 + endM;
+                
+                for (let m = startMinutes; m + duration <= endMinutes; m += duration) {
+                    const h = Math.floor(m / 60);
+                    const min = m % 60;
+                    const timeStr = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+                    hoursHTML += `<div class="time-slot" onclick="selectMeetingTime('${timeStr}')">${timeStr}</div>`;
+                }
+            } else {
+                hoursHTML = '<div class="time-slot" style="background: #444; color: #94a3b8;">День не рабочий</div>';
+            }
+            
+            document.getElementById('timeSlots').innerHTML = hoursHTML;
+        }
+        
+        function selectMeetingTime(timeStr) {
+            if (!currentMeeting) currentMeeting = {};
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            currentMeeting.startTime = timeStr;
+            
+            // Автоматическое вычисление времени окончания
+            const duration = parseInt(localStorage.getItem('meetingDuration') || '60');
+            const totalMinutes = hours * 60 + minutes + duration;
+            const endHours = Math.floor(totalMinutes / 60);
+            const endMinutes = totalMinutes % 60;
+            currentMeeting.endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+            
+            document.getElementById('meetingStartTime').textContent = timeStr;
+            document.getElementById('meetingEndTime').textContent = currentMeeting.endTime;
+            document.getElementById('meetingDetails').style.display = 'block';
+            document.getElementById('meetingTimeSelection').style.display = 'none';
+            
+            // Заполнить данные
+            const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
+            document.getElementById('meetingTimezoneDisplay').textContent = 'Europe/Moscow';
+            document.getElementById('meetingInviteText').textContent = localStorage.getItem('inviteText') || 'Стандартный';
+            
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user) {
+                const user = window.Telegram.WebApp.initDataUnsafe.user;
+                document.getElementById('meetingParticipant').textContent = user.first_name || 'Пользователь';
+            }
+        }
+        
+        function updateMeetingTimezone() {
+            currentMeeting.timezone = document.getElementById('meetingTimezone').value;
+            document.getElementById('meetingTimezoneDisplay').textContent = currentMeeting.timezone;
+        }
+        
+        function openDateChange(type) {
+            alert(`Изменение времени для: ${type === 'start' ? 'начала' : 'окончания'} встречи`);
+        }
+        
+        function saveMeeting() {
+            if (!currentMeeting || !currentMeeting.startTime) {
+                alert('Выберите время встречи');
+                return;
+            }
+            
+            const comment = document.getElementById('meetingComment').value.trim();
+            const meeting = {
+                id: Date.now().toString(),
+                title: 'Встреча',
+                desc: comment || localStorage.getItem('inviteText') || '',
+                date: formatDate(currentMeeting.selectedDate),
+                startTime: currentMeeting.startTime,
+                endTime: currentMeeting.endTime,
+                timezone: currentMeeting.timezone || 'Europe/Moscow',
+                createdAt: new Date().toISOString()
+            };
+            
+            const dateStr = meeting.date;
+            if (!tasks[dateStr]) tasks[dateStr] = [];
+            tasks[dateStr].push(meeting);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            
+            alert('✅ Встреча создана!');
+            backToMenu();
+        }
             const year = date.getFullYear();
             const month = date.getMonth();
             document.getElementById('tasksViewMonth').textContent = MONTH_NAMES[month] + ' ' + year;
@@ -743,7 +989,9 @@
             document.getElementById('taskCalendarContainer').style.display = 'none';
             document.getElementById('tasksView').style.display = 'none';
             document.getElementById('tasksListContainer').style.display = 'none';
+            document.getElementById('meetingForm').style.display = 'none';
             document.getElementById('mainMenu').style.display = 'block';
+            currentMeeting = null;
             currentDate = new Date();
             selectedDate = null;
         }
@@ -799,7 +1047,18 @@
             }, 100);
         }
         
-        function createMeeting() { alert('Создание встречи - в разработке'); }
+        function createMeeting() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('meetingForm').style.display = 'block';
+            currentMeeting = {
+                selectedDate: null,
+                startTime: null,
+                endTime: null,
+                timezone: 'Europe/Moscow',
+                comment: ''
+            };
+            renderMeetingCalendar(currentDate);
+        }
         
         function updateTaskList() {
             if (!selectedDate) return;
