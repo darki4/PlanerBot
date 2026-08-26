@@ -471,9 +471,27 @@
                 <div class="weekday">Вс</div>
             </div>
             <div class="days-grid" id="tasksViewCalendarDays"></div>
-        </div>
+        </div> <!-- конец calendar -->
         
-        <!-- Настройки расписания (длительность и лимит) -->
+        <!-- Список задач выбранного дня -->
+        <div class="tasks-list-container" id="tasksListContainer" style="display:none;">
+            <button class="back-btn" onclick="backToTasksView()">←</button>
+            <div class="tasks-list-date" id="tasksListDate"></div>
+            <div id="tasksListView"></div>
+        </div>
+    </div>
+
+    <!-- Настройки расписания -->
+    <div class="schedule-settings-view" id="scheduleSettingsView" style="display:none;">
+        <div class="schedule-header">
+            <button class="back-btn" onclick="backToMenuFromSettings()">←</button>
+            <h2 style="font-size: 1.5em; margin: 10px 0; text-align: center;">Настройки расписания</h2>
+        </div>
+        <div class="schedule-section">
+            <h3 style="margin-bottom: 15px; color: #cbd5e1;">Рабочие часы</h3>
+            <div id="scheduleSettingsContent"></div>
+        </div>
+        <!-- Настройки длительности и лимита -->
         <div class="schedule-settings-row">
             <div class="setting-item">
                 <span class="setting-label">Длительность встречи</span>
@@ -495,25 +513,6 @@
                     <button class="btn-submit" onclick="setEventLimit()">Готово</button>
                 </div>
             </div>
-        </div>
-        
-        <!-- Список задач выбранного дня -->
-        <div class="tasks-list-container" id="tasksListContainer" style="display:none;">
-            <button class="back-btn" onclick="backToTasksView()">←</button>
-            <div class="tasks-list-date" id="tasksListDate"></div>
-            <div id="tasksListView"></div>
-        </div>
-    </div>
-
-    <!-- Настройки расписания -->
-    <div class="schedule-settings-view" id="scheduleSettingsView" style="display:none;">
-        <div class="schedule-header">
-            <button class="back-btn" onclick="backToMenuFromSettings()">←</button>
-            <h2 style="font-size: 1.5em; margin: 10px 0; text-align: center;">Настройки расписания</h2>
-        </div>
-        <div class="schedule-section">
-            <h3 style="margin-bottom: 15px; color: #cbd5e1;">Рабочие часы</h3>
-            <div id="scheduleSettingsContent"></div>
         </div>
         <div class="form-actions" style="margin-top: 20px;">
             <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
