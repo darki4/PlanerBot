@@ -1553,10 +1553,27 @@
                         <div class="task-title">📹 ${meeting.title}</div>
                         <div class="task-desc">${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}</div>
                         ${meeting.desc ? `<div class="task-desc">${meeting.desc}</div>` : ''}
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px;" onclick="deleteMeeting('${meeting.id}')">🗑️ Удалить</button>
+                        </div>
                     </div>`;
                 });
             }
             document.getElementById('meetingsListView').innerHTML = html;
+        }
+        
+        function deleteMeeting(meetingId) {
+            if (!confirm('🗑️ Точко удалить встречу?')) return;
+            
+            const dateStr = formatDate(selectedDate);
+            const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
+            if (allTasks[dateStr]) {
+                allTasks[dateStr] = allTasks[dateStr].filter(t => t.id !== meetingId);
+                if (allTasks[dateStr].length === 0) delete allTasks[dateStr];
+            }
+            localStorage.setItem('tasks', JSON.stringify(allTasks));
+            updateMeetingsList();
+            renderMeetingsCalendar(currentDate);
         }        
         function openScheduleSettings() {
             resetTelegramState();
