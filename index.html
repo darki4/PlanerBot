@@ -68,6 +68,7 @@
         /* Календарь */
         .calendar-container { display: none; }
 #meetingCalendarContainer { display: block; }
+#meetingsViewCalendar { display: none; }
         .calendar-header { 
             display: flex; 
             justify-content: space-between; 
@@ -490,13 +491,25 @@
         <!-- Выбор часового пояса -->
         <div class="timezone-selector">
             <select class="form-input" id="meetingTimezone" onchange="updateMeetingTimezone()">
-                <option value="Europe/Moscow">Europe/Moscow (Москва)</option>
-                <option value="Europe/Samara">Europe/Samara (Самара)</option>
                 <option value="Europe/Kaliningrad">Europe/Kaliningrad (Калининград)</option>
-                <option value="Asia/Vladivostok">Asia/Vladivostok (Владивосток)</option>
-                <option value="UTC">UTC</option>
-            </select>
-        </div>
+                <option value="Europe/Moscow" selected>Europe/Moscow (Москва)</option>
+                <option value="Europe/Simferopol">Europe/Simferopol (Симферополь)</option>
+                <option value="Europe/Minsk">Europe/Minsk (Минск)</option>
+                <option value="Europe/Samara">Europe/Samara (Самара)</option>
+                <option value="Europe/Saratov">Europe/Saratov (Саратов)</option>
+                <option value="Europe/Ulyanovsk">Europe/Ulyanovsk (Ульяновск)</option>
+                <option value="Europe/Astrakhan">Europe/Astrakhan (Астрахань)</option>
+                <option value="Europe/Volgograd">Europe/Volgograd (Волгоград)</option>
+                <option value="Europe/Tbilisi">Europe/Tbilisi (Тбилиси)</option>
+                <option value="Asia/Yekaterinburg">Asia/Yekaterinburg (Екатеринбург)</option>
+                <option value="Asia/Omsk">Asia/Omsk (Омск)</option>
+                <option value="Asia/Barnaul">Asia/Barnaul (Барнаул)</option>
+                <option value="Asia/Novosibirsk">Asia/Novosibirsk (Новосибирск)</option>
+                <option value="Asia/Tomsk">Asia/Tomsk (Томск)</option>
+                <option value="Asia/Novokuznetsk">Asia/Novokuznetsk (Новокузнецк)</option>
+                <option value="Asia/Irkutsk">Asia/Irkutsk (Иркутск)</option>
+                <option value="Asia/Chita">Asia/Chita (Чита)</option>
+                <option value="Asia/Yakutsk">Asia/Yakutsk (Якутск)
         
         <!-- Окно выбора времени (появляется после выбора даты) -->
         <div class="meeting-time-selection" id="meetingTimeSelection" style="display:none;">
@@ -583,6 +596,41 @@
             <button class="back-btn" onclick="backToTasksView()">←</button>
             <div class="tasks-list-date" id="tasksListDate"></div>
             <div id="tasksListView"></div>
+        </div>
+    </div>
+
+    <!-- Страница "Созданные встречи" -->
+    <div class="tasks-view" id="meetingsView">
+        <div class="tasks-view-header">
+            <button class="back-btn" onclick="backToMenu()">←</button>
+            <div class="tasks-view-title">Созданные встречи</div>
+            <div style="width: 24px;"></div>
+        </div>
+        
+        <!-- Календарь для просмотра встреч -->
+        <div class="calendar-container" id="meetingsViewCalendar">
+            <div class="calendar-header">
+                <button class="month-btn" onclick="prevMonthMeetings()">‹</button>
+                <div class="month-title" id="meetingsViewMonth">Август 2026</div>
+                <button class="month-btn" onclick="nextMonthMeetings()">›</button>
+            </div>
+            <div class="weekdays">
+                <div class="weekday">Пн</div>
+                <div class="weekday">Вт</div>
+                <div class="weekday">Ср</div>
+                <div class="weekday">Чт</div>
+                <div class="weekday">Пт</div>
+                <div class="weekday">Сб</div>
+                <div class="weekday">Вс</div>
+            </div>
+            <div class="days-grid" id="meetingsViewCalendarDays"></div>
+        </div>
+        
+        <!-- Список встреч выбранного дня -->
+        <div class="tasks-list-container" id="meetingsListContainer" style="display:none;">
+            <button class="back-btn" onclick="backToMeetingsView()">←</button>
+            <div class="tasks-list-date" id="meetingsListDate"></div>
+            <div id="meetingsListView"></div>
         </div>
     </div>
 
@@ -1078,6 +1126,8 @@
             document.getElementById('tasksView').style.display = 'none';
             document.getElementById('tasksListContainer').style.display = 'none';
             document.getElementById('meetingForm').style.display = 'none';
+            document.getElementById('meetingsView').style.display = 'none';
+            document.getElementById('meetingsListContainer').style.display = 'none';
             document.getElementById('mainMenu').style.display = 'block';
             currentMeeting = null;
             currentDate = new Date();
@@ -1357,7 +1407,83 @@
             renderTasksCalendar(currentDate);
         }
         
-        function viewMeetings() { alert('Просмотр встреч - в разработке'); }        
+        function viewMeetings() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('meetingsView').style.display = 'block';
+            document.getElementById('meetingsViewCalendar').style.display = 'block';
+            document.getElementById('meetingsListContainer').style.display = 'none';
+            renderMeetingsCalendar(currentDate);
+        }
+        
+        function renderMeetingsCalendar(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            document.getElementById('meetingsViewMonth').textContent = MONTH_NAMES[month] + ' ' + year;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            
+            let daysHTML = '';
+            for (let i = 0; i < adjustedFirstDay; i++) {
+                daysHTML += '<div class="day-cell other-month"></div>';
+            }
+            for (let d = 1; d <= lastDate; d++) {
+                const today = new Date();
+                const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                const dayMeetings = getMeetingsForDate(dateStr);
+                let meetingDot = dayMeetings.length > 0 ? '<div class="task-dot" style="background:#34d399"></div>' : '';
+                let classes = 'day-cell';
+                if (isToday) classes += ' today';
+                daysHTML += `<div class="${classes}" onclick="selectMeetingDateForView(${year}, ${month + 1}, ${d})">
+                    <div class="day-number">${d}</div>
+                    ${meetingDot}
+                </div>`;
+            }
+            document.getElementById('meetingsViewCalendarDays').innerHTML = daysHTML;
+        }
+        
+        function getMeetingsForDate(dateStr) {
+            const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
+            return (allTasks[dateStr] || []).filter(t => t.title === 'Встреча');
+        }
+        
+        function prevMonthMeetings() { currentDate.setMonth(currentDate.getMonth() - 1); renderMeetingsCalendar(currentDate); }
+        function nextMonthMeetings() { currentDate.setMonth(currentDate.getMonth() + 1); renderMeetingsCalendar(currentDate); }
+        
+        function selectMeetingDateForView(year, month, day) {
+            selectedDate = new Date(year, month - 1, day);
+            const dateStr = formatDate(selectedDate);
+            document.getElementById('meetingsViewCalendar').style.display = 'none';
+            document.getElementById('meetingsListContainer').style.display = 'block';
+            document.getElementById('meetingsListDate').textContent = formatDisplayDate(selectedDate);
+            updateMeetingsList();
+        }
+        
+        function backToMeetingsView() {
+            document.getElementById('meetingsListContainer').style.display = 'none';
+            document.getElementById('meetingsViewCalendar').style.display = 'block';
+        }
+        
+        function updateMeetingsList() {
+            if (!selectedDate) return;
+            const dateStr = formatDate(selectedDate);
+            const meetings = getMeetingsForDate(dateStr);
+            let html = '';
+            if (meetings.length === 0) {
+                html = '<div class="empty-state">Нет встреч на этот день</div>';
+            } else {
+                meetings.forEach(meeting => {
+                    html += `<div class="task-item-view">
+                        <div class="task-title">📹 ${meeting.title}</div>
+                        <div class="task-desc">${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}</div>
+                        ${meeting.desc ? `<div class="task-desc">${meeting.desc}</div>` : ''}
+                    </div>`;
+                });
+            }
+            document.getElementById('meetingsListView').innerHTML = html;
+        }        
         function openScheduleSettings() {
             resetTelegramState();
             document.getElementById('mainMenu').style.display = 'none';
