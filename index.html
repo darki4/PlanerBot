@@ -859,19 +859,20 @@
             const [hours, minutes] = timeStr.split(':').map(Number);
             currentMeeting.startTime = timeStr;
             
-            // Автоматическое вычисление времени окончания
             const duration = parseInt(localStorage.getItem('meetingDuration') || '60');
             const totalMinutes = hours * 60 + minutes + duration;
             const endHours = Math.floor(totalMinutes / 60);
             const endMinutes = totalMinutes % 60;
             currentMeeting.endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
             
-            document.getElementById('meetingStartTime').textContent = timeStr;
-            document.getElementById('meetingEndTime').textContent = currentMeeting.endTime;
+            // Выводим дату + время
+            const dateStr = formatDisplayDate(currentMeeting.selectedDate);
+            document.getElementById('meetingStartTime').textContent = dateStr + ' | ' + timeStr;
+            document.getElementById('meetingEndTime').textContent = dateStr + ' | ' + currentMeeting.endTime;
+            
             document.getElementById('meetingDetails').style.display = 'block';
             document.getElementById('meetingTimeSelection').style.display = 'none';
             
-            // Заполнить данные
             const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
             document.getElementById('meetingTimezoneDisplay').textContent = 'Europe/Moscow';
             document.getElementById('meetingInviteText').textContent = localStorage.getItem('inviteText') || 'Стандартный';
@@ -888,7 +889,91 @@
         }
         
         function openDateChange(type) {
-            alert(`Изменение времени для: ${type === 'start' ? 'начала' : 'окончания'} встречи`);
+            // Создаем модальное окно для изменения даты/времени
+            const modal = document.createElement('div');
+            modal.id = 'dateTimeModal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;';
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = 'background:#334155;padding:20px;border-radius:12px;width:90%;max-width:320px;';
+            
+            const title = document.createElement('h3');
+            title.textContent = type === 'start' ? 'Дата и время начала' : 'Дата и время завершения';
+            title.style.color = '#e2e8f0';
+            title.style.marginBottom = '15px';
+            
+            const dateInput = document.createElement('input');
+            dateInput.type = 'date';
+            dateInput.className = 'form-input';
+            dateInput.style.marginBottom = '10px';
+            if (currentMeeting.selectedDate) {
+                dateInput.value = formatDate(currentMeeting.selectedDate);
+            }
+            
+            const timeInput = document.createElement('input');
+            timeInput.type = 'time';
+            timeInput.className = 'form-input';
+            timeInput.style.marginBottom = '15px';
+            timeInput.value = type === 'start' ? currentMeeting.startTime : currentMeeting.endTime;
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.style.display = 'flex';
+            actionsDiv.style.gap = '10px';
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Отмена';
+            cancelBtn.className = 'btn-cancel';
+            cancelBtn.onclick = () => {
+                document.body.removeChild(modal);
+                resetTelegramState();
+            };
+            
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Готово';
+            saveBtn.className = 'btn-submit';
+            saveBtn.onclick = () => {
+                if (!dateInput.value || !timeInput.value) {
+                    alert('Выберите дату и время');
+                    return;
+                }
+                
+                // Обновляем выбранную дату
+                const [year, month, day] = dateInput.value.split('-').map(Number);
+                currentMeeting.selectedDate = new Date(year, month - 1, day);
+                
+                if (type === 'start') {
+                    currentMeeting.startTime = timeInput.value;
+                    
+                    // Пересчитываем время окончания
+                    const duration = parseInt(localStorage.getItem('meetingDuration') || '60');
+                    const [h, m] = timeInput.value.split(':').map(Number);
+                    const totalMin = h * 60 + m + duration;
+                    const endH = Math.floor(totalMin / 60);
+                    const endM = totalMin % 60;
+                    currentMeeting.endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+                } else {
+                    currentMeeting.endTime = timeInput.value;
+                }
+                
+                // Обновляем отображение
+                const dateStr = formatDisplayDate(currentMeeting.selectedDate);
+                document.getElementById('meetingStartTime').textContent = dateStr + ' | ' + currentMeeting.startTime;
+                document.getElementById('meetingEndTime').textContent = dateStr + ' | ' + currentMeeting.endTime;
+                
+                document.body.removeChild(modal);
+                resetTelegramState();
+            };
+            
+            actionsDiv.appendChild(cancelBtn);
+            actionsDiv.appendChild(saveBtn);
+            modalContent.appendChild(title);
+            modalContent.appendChild(dateInput);
+            modalContent.appendChild(timeInput);
+            modalContent.appendChild(actionsDiv);
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            resetTelegramState();
         }
         
         function saveMeeting() {
