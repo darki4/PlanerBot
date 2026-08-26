@@ -359,7 +359,7 @@
         </div>
         <div class="footer">
             <div class="footer-item active" onclick="openScheduleSettings()"><span>📅</span><span>Расписание</span></div>
-            <div class="footer-item" onclick="openScheduleSettings()"><span>⚙️</span><span>Настройки</span></div>
+            <div class="footer-item" onclick="openSettings()"><span>⚙️</span><span>Настройки</span></div>
         </div>
     </div>
 
@@ -1680,19 +1680,27 @@
         }
         
         function openScheduleSettings() {
-            resetTelegramState();
-            document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('tasksListContainer').style.display = 'none';
-            document.getElementById('scheduleSettingsView').style.display = 'none';
-            document.getElementById('settingsView').style.display = 'block';
-            loadUserSettings();
-        }
+    resetTelegramState();
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('tasksListContainer').style.display = 'none';
+    document.getElementById('scheduleSettingsView').style.display = 'block';
+    document.getElementById('settingsView').style.display = 'none';
+    loadScheduleSettings();
+}
         
         function backToMenuFromSettings() {
             document.getElementById('scheduleSettingsView').style.display = 'none';
             document.getElementById('settingsView').style.display = 'none';
             document.getElementById('mainMenu').style.display = 'block';
             resetTelegramState();
+        }
+        
+        function openSettings() {
+            resetTelegramState();
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('scheduleSettingsView').style.display = 'none';
+            document.getElementById('settingsView').style.display = 'block';
+            loadUserSettings();
         }
         
         function toggleWorkingDay(day) {
