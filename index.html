@@ -171,12 +171,20 @@
 .settings-btn:hover { background: #2563eb; }
         .schedule-header { display: flex; align-items: center; margin-bottom: 20px; }
         .schedule-section { background: #2d2d3a; padding: 15px; border-radius: 10px; }
-        .schedule-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .schedule-day { width: 130px; font-weight: 500; color: #e2e8f0; }
-        .schedule-time { flex: 1; display: flex; align-items: center; gap: 8px; }
-        .schedule-check { width: 120px; display: flex; justify-content: center; }
+        .schedule-row { display: grid; grid-template-columns: 140px 1fr 110px; gap: 10px; margin-bottom: 12px; align-items: center; }
+        .schedule-day { font-weight: 500; color: #e2e8f0; min-width: 120px; }
+        .schedule-time { display: flex; align-items: center; gap: 8px; min-width: 180px; }
+        .schedule-check { display: flex; justify-content: center; min-width: 100px; }
         .schedule-checkbox { width: 20px; height: 20px; cursor: pointer; }
         .schedule-row:last-child { margin-bottom: 0; }
+        
+        @media (max-width: 380px) {
+            .schedule-row { grid-template-columns: 130px 1fr 100px; gap: 6px; }
+            .schedule-day { min-width: 110px; font-size: 0.9em; }
+            .schedule-time { min-width: 150px; gap: 4px; }
+            .schedule-time input { font-size: 0.8em; padding: 6px; }
+            .schedule-check { min-width: 80px; }
+        }
         .form-actions { display: flex; gap: 10px; margin-top: 20px; }
         .btn-submit { flex: 1; background: #34d399; color: #1e1e2e; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-cancel { flex: 1; background: #ef4444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
