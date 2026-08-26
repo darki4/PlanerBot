@@ -1842,7 +1842,89 @@
             document.getElementById('mainMenu').style.display = 'block';
             resetTelegramState();
         }
+
+        function checkMeetingReminders() {
+            const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
+            const reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
+            const now = new Date();
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            const todayStr = formatDate(now);
+            const todayMeetings = allTasks[todayStr] || [];
+            
+            todayMeetings.forEach(meeting => {
+                if (meeting.title !== 'Встреча' || meeting.status === 'completed' || meeting.status === 'cancelled') return;
+                
+                const startMinutes = parseInt(meeting.startTime.split(':')[0]) * 60 + parseInt(meeting.startTime.split(':')[1]);
+                const timeDiff = startMinutes - nowMinutes;
+                
+                // Уведомление за N минут до начала
+                if (reminderMinutes > 0 && timeDiff === reminderMinutes) {
+                    const notified = localStorage.getItem('reminded_' + meeting.id);
+                    if (!notified) {
+                        sendMeetingNotification(meeting, 'reminder');
+                        localStorage.setItem('reminded_' + meeting.id, 'true');
+                    }
+                }
+                
+                // Уведомление в момент начала встречи
+                if (timeDiff === 0) {
+                    const notified = localStorage.getItem('started_' + meeting.id);
+                    if (!notified) {
+                        sendMeetingNotification(meeting, 'start');
+                        localStorage.setItem('started_' + meeting.id, 'true');
+                    }
+                }
+            });
+        }
         
+        function sendMeetingNotification(meeting, type) {
+            const settings = JSON.parse(localStorage.getItem('notifications') || '{}');
+            const userSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+            
+                const reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
+                if (type === 'reminder' && reminderMinutes > 0) {
+                const title = '🔔 Напоминание о встрече';
+                const text = `${meeting.title}: ${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}\n${meeting.desc || ''}`;
+                
+                // Telegram WebApp уведомление
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        if (window.Telegram.WebApp.showPopup) {
+                            window.Telegram.WebApp.showPopup({
+                                type: 'alert',
+                                title: title,
+                                message: text
+                            });
+                        }
+                    } catch(e) {}
+                }
+            }
+            
+            if (type === 'start') {
+                const title = '🔔 Встреча 시작илась';
+                const text = `${meeting.title} начинается сейчас!\n${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}`;
+                
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        if (window.Telegram.WebApp.showPopup) {
+                            window.Telegram.WebApp.showPopup({
+                                type: 'alert',
+                                title: title,
+                                message: text
+                            });
+                        }
+                    } catch(e) {}
+                }
+                
+                // Используйте tg.sendData для отправки уведомления на сервер
+                if (window.Telegram && window.Telegram.WebApp) {
+                    try {
+                        // Telegram WebApp автоматически показывает уведомления пользователю
+                    } catch(e) {}
+                }
+            }
+        }
+
         function openSettings() {
             resetTelegramState();
             document.getElementById('mainMenu').style.display = 'none';
@@ -2142,6 +2224,10 @@
         window.onload = function() {
             initTelegram();
             renderCalendar(currentDate);
+            checkMeetingReminders();
+            
+            // Проверка уведомлений каждую минуту
+            setInterval(checkMeetingReminders, 60000);
         };
     </script>
 </body>
