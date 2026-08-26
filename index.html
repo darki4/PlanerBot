@@ -800,6 +800,25 @@
                 </div>
             </div>
         </div>
+        <div class="schedule-settings-row">
+            <div class="setting-item">
+                <span class="setting-label">Напоминание</span>
+                <span class="setting-value" id="reminderValue" onclick="toggleDropdown('reminderDropdown')">Выключено</span>
+                <div class="dropdown" id="reminderDropdown">
+                    <div class="dropdown-item" onclick="setReminder(0)">Выключено</div>
+                    <div class="dropdown-item" onclick="setReminder(5)">За 5 минут</div>
+                    <div class="dropdown-item" onclick="setReminder(10)">За 10 минут</div>
+                    <div class="dropdown-item" onclick="setReminder(15)">За 15 минут</div>
+                    <div class="dropdown-item" onclick="setReminder(30)">За 30 минут</div>
+                    <div class="dropdown-item" onclick="setReminder(60)">За 1 час</div>
+                    <div class="dropdown-item" onclick="setReminder(120)">За 2 часа</div>
+                    <div class="dropdown-item" onclick="setReminder(1440)">За день</div>
+                    <div class="dropdown-item" onclick="setReminder(-1)">Своё время</div>
+                    <input type="number" class="form-input" id="customReminderInput" placeholder="Минут до начала" style="margin-top: 10px; display: none;">
+                    <button class="btn-submit" onclick="setCustomReminder()" style="margin-top: 5px; display: none;" id="customReminderBtn">Готово</button>
+                </div>
+            </div>
+        </div>
         <div class="form-actions" style="margin-top: 20px;">
             <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
             <button class="btn-submit" onclick="saveScheduleSettings()">Сохранить</button>
@@ -1158,6 +1177,7 @@
                 startTime: currentMeeting.startTime,
                 endTime: currentMeeting.endTime,
                 timezone: currentMeeting.timezone || 'Europe/Moscow',
+                status: 'active',
                 createdAt: new Date().toISOString()
             };
             
@@ -1307,13 +1327,21 @@
         function createMeeting() {
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('meetingForm').style.display = 'block';
+            
+            // Загрузка часового пояса из настроек
+            const savedTz = localStorage.getItem('timezone');
             currentMeeting = {
                 selectedDate: null,
                 startTime: null,
                 endTime: null,
-                timezone: 'Europe/Moscow',
+                timezone: savedTz || 'Europe/Moscow',
                 comment: ''
             };
+            if (savedTz) {
+                document.getElementById('meetingTimezone').value = savedTz;
+                document.getElementById('meetingTimezoneDisplay').textContent = savedTz;
+            }
+            
             renderMeetingCalendar(currentDate);
         }
         
@@ -1594,17 +1622,75 @@
                 html = '<div class="empty-state">Нет встреч на этот день</div>';
             } else {
                 meetings.forEach(meeting => {
+                    // Проверка истечения времени встречи
+                    const now = new Date();
+                    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                    const endMinutes = parseInt(meeting.endTime.split(':')[0]) * 60 + parseInt(meeting.endTime.split(':')[1]);
+                    let status = meeting.status || 'active';
+                    let statusLabel = 'Активна';
+                    let statusColor = '#34d399';
+                    
+                    if (status === 'completed' || (nowMinutes > endMinutes && status !== 'cancelled')) {
+                        status = 'completed';
+                        statusLabel = 'Завершена';
+                        statusColor = '#94a3b8';
+                    }
+                    
                     html += `<div class="task-item-view">
                         <div class="task-title">📹 ${meeting.title}</div>
                         <div class="task-desc">${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}</div>
+                        <div class="task-desc" style="color: ${statusColor}; font-size: 0.85em;">Статус: ${statusLabel}</div>
                         ${meeting.desc ? `<div class="task-desc">${meeting.desc}</div>` : ''}
                         <div style="margin-top: 8px; display: flex; gap: 8px;">
-                            <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px;" onclick="deleteMeeting('${meeting.id}')">🗑️ Удалить</button>
+                            <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px;" onclick="changeMeetingStatus('${meeting.id}', 'completed')">✓ Завершить</button>
+                            <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px;" onclick="changeMeetingStatus('${meeting.id}', 'cancelled')">✕ Отменить</button>
+                            <button class="btn-cancel" style="font-size: 0.8em; padding: 6px 12px; margin-left: auto;" onclick="deleteMeeting('${meeting.id}')">🗑️ Удалить</button>
                         </div>
                     </div>`;
                 });
             }
             document.getElementById('meetingsListView').innerHTML = html;
+            
+            // Проверка истечения времени после рендера
+            checkMeetingExpiration();
+        }
+        
+        function checkMeetingExpiration() {
+            const dateStr = formatDate(selectedDate);
+            const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
+            if (!allTasks[dateStr]) return;
+            
+            const now = new Date();
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            let changed = false;
+            
+            allTasks[dateStr].forEach(meeting => {
+                if (meeting.title === 'Встреча' && meeting.status !== 'completed' && meeting.status !== 'cancelled') {
+                    const endMinutes = parseInt(meeting.endTime.split(':')[0]) * 60 + parseInt(meeting.endTime.split(':')[1]);
+                    if (nowMinutes > endMinutes) {
+                        meeting.status = 'completed';
+                        changed = true;
+                    }
+                }
+            });
+            
+            if (changed) {
+                localStorage.setItem('tasks', JSON.stringify(allTasks));
+            }
+        }
+        
+        function changeMeetingStatus(meetingId, status) {
+            const dateStr = formatDate(selectedDate);
+            const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
+            if (allTasks[dateStr]) {
+                const meeting = allTasks[dateStr].find(t => t.id === meetingId);
+                if (meeting) {
+                    meeting.status = status;
+                    localStorage.setItem('tasks', JSON.stringify(allTasks));
+                    updateMeetingsList();
+                    renderMeetingsCalendar(currentDate);
+                }
+            }
         }
         
         function deleteMeeting(meetingId) {
@@ -1824,6 +1910,7 @@
         }
         
         let meetingDuration = localStorage.getItem('meetingDuration') || 60;
+        let reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
         let eventLimit = localStorage.getItem('eventLimit') || 'Не установлен';
         let inviteText = localStorage.getItem('inviteText') || 'Стандартный';
         
@@ -1855,6 +1942,35 @@
                 document.getElementById('eventLimit').textContent = 'Не установлен';
             }
             document.getElementById('limitDropdown').classList.remove('show');
+        }
+        
+        function setReminder(minutes) {
+            if (minutes === -1) {
+                document.getElementById('customReminderInput').style.display = 'block';
+                document.getElementById('customReminderBtn').style.display = 'block';
+                return;
+            }
+            reminderMinutes = minutes;
+            localStorage.setItem('reminderMinutes', minutes);
+            const label = minutes === 0 ? 'Выключено' :
+                minutes < 60 ? `За ${minutes} мин` :
+                minutes < 1440 ? `За ${minutes / 60} ч` :
+                `За ${minutes / 1440} д`;
+            document.getElementById('reminderValue').textContent = label;
+            document.getElementById('reminderDropdown').classList.remove('show');
+        }
+        
+        function setCustomReminder() {
+            const input = document.getElementById('customReminderInput');
+            const value = parseInt(input.value);
+            if (isNaN(value) || value <= 0) {
+                alert('Введите корректное время');
+                return;
+            }
+            setReminder(value);
+            input.value = '';
+            input.style.display = 'none';
+            document.getElementById('customReminderBtn').style.display = 'none';
         }
         
         function cancelInviteText() {
@@ -1904,6 +2020,12 @@
             document.getElementById('meetingDuration').textContent = `${meetingDuration} мин.`;
             document.getElementById('eventLimit').textContent = eventLimit === 'Не установлен' ? 'Не установлен' : `${eventLimit} встреч`;
             document.getElementById('inviteText').textContent = inviteText;
+            
+            const reminderLabel = reminderMinutes === 0 ? 'Выключено' :
+                reminderMinutes < 60 ? `За ${reminderMinutes} мин` :
+                reminderMinutes < 1440 ? `За ${reminderMinutes / 60} ч` :
+                `За ${reminderMinutes / 1440} д`;
+            document.getElementById('reminderValue').textContent = reminderLabel;
             
             resetTelegramState();
         }
