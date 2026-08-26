@@ -514,6 +514,20 @@
                 </div>
             </div>
         </div>
+        <!-- Текст приглашения -->
+        <div class="schedule-settings-row">
+            <div class="setting-item">
+                <span class="setting-label">Текст приглашения</span>
+                <span class="setting-value" id="inviteText" onclick="toggleDropdown('inviteTextDropdown')">Стандартный</span>
+                <div class="dropdown" id="inviteTextDropdown">
+                    <textarea class="form-input" id="inviteTextInput" rows="3" placeholder="Введите текст приглашения"></textarea>
+                    <div class="form-actions">
+                        <button class="btn-cancel" onclick="cancelInviteText()">Отмена</button>
+                        <button class="btn-submit" onclick="saveInviteText()">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="form-actions" style="margin-top: 20px;">
             <button class="btn-cancel" onclick="backToMenuFromSettings()">Назад</button>
             <button class="btn-submit" onclick="saveScheduleSettings()">Сохранить</button>
@@ -1077,6 +1091,7 @@
         
         let meetingDuration = localStorage.getItem('meetingDuration') || 60;
         let eventLimit = localStorage.getItem('eventLimit') || 'Не установлен';
+        let inviteText = localStorage.getItem('inviteText') || 'Стандартный';
         
         function toggleDropdown(id) {
             const dropdown = document.getElementById(id);
@@ -1108,6 +1123,26 @@
             document.getElementById('limitDropdown').classList.remove('show');
         }
         
+        function cancelInviteText() {
+            document.getElementById('inviteTextInput').value = '';
+            document.getElementById('inviteTextDropdown').classList.remove('show');
+        }
+        
+        function saveInviteText() {
+            const input = document.getElementById('inviteTextInput');
+            const value = input.value.trim();
+            if (value) {
+                inviteText = value;
+                localStorage.setItem('inviteText', value);
+                document.getElementById('inviteText').textContent = value;
+            } else {
+                inviteText = 'Стандартный';
+                localStorage.removeItem('inviteText');
+                document.getElementById('inviteText').textContent = 'Стандартный';
+            }
+            document.getElementById('inviteTextDropdown').classList.remove('show');
+        }
+        
         function loadScheduleSettings() {
             const settings = JSON.parse(localStorage.getItem('scheduleSettings') || '{}');
             const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -1134,6 +1169,7 @@
             
             document.getElementById('meetingDuration').textContent = `${meetingDuration} мин.`;
             document.getElementById('eventLimit').textContent = eventLimit === 'Не установлен' ? 'Не установлен' : `${eventLimit} встреч`;
+            document.getElementById('inviteText').textContent = inviteText;
             
             resetTelegramState();
         }
