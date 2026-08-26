@@ -916,6 +916,8 @@
             alert('✅ Встреча создана!');
             backToMenu();
         }
+
+        function renderTasksCalendar(date) {
             const year = date.getFullYear();
             const month = date.getMonth();
             document.getElementById('tasksViewMonth').textContent = MONTH_NAMES[month] + ' ' + year;
