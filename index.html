@@ -877,6 +877,17 @@
                              'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
         function initTelegram() {
+            // Принудительный сброс для веб-версии Telegram
+            document.body.style.pointerEvents = 'auto';
+            document.body.style.touchAction = 'manipulation';
+            document.body.style.overflow = 'auto';
+            
+            const allElements = document.querySelectorAll('*');
+            allElements.forEach(el => {
+                el.style.pointerEvents = 'auto';
+                el.style.touchAction = 'manipulation';
+            });
+            
             if (window.Telegram && window.Telegram.WebApp) {
                 tg = window.Telegram.WebApp;
                 tg.setHeaderColor('#1e1e2e');
@@ -2269,12 +2280,6 @@ function addParticipant() {
                     }
                     if (window.Telegram.WebApp.MainButton) {
                         window.Telegram.WebApp.MainButton.hide();
-                        if (window.Telegram.WebApp.MainButton.enable) {
-                            window.Telegram.WebApp.MainButton.enable();
-                        }
-                    }
-                    if (window.Telegram.WebApp.enableClosingConfirmation) {
-                        window.Telegram.WebApp.enableClosingConfirmation();
                     }
                 } catch(e) {}
             }
