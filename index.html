@@ -890,6 +890,10 @@
                 const user = tg.initDataUnsafe?.user;
                 console.log('Telegram user:', user);
                 
+                if (user && user.id) {
+                    localStorage.setItem('telegramUserId', user.id);
+                }
+                
                 const userNameEl = document.getElementById('userName');
                 if (user) {
                     const firstName = user.first_name || '';
@@ -1946,6 +1950,23 @@ function addParticipant() {
             resetTelegramState();
         }
 
+        function sendBotNotification(messageText) {
+            const userId = localStorage.getItem('telegramUserId');
+            if (!userId) return;
+            
+            fetch('https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/sendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: userId,
+                    text: messageText,
+                    parse_mode: 'HTML'
+                })
+            }).catch(e => console.error('Notification error:', e));
+        }
+        
         function checkMeetingReminders() {
             const allTasks = JSON.parse(localStorage.getItem('tasks')) || {};
             const reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
@@ -1982,12 +2003,16 @@ function addParticipant() {
         
         function sendMeetingNotification(meeting, type) {
             const settings = JSON.parse(localStorage.getItem('notifications') || '{}');
+            const reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
             const userSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
             
-                const reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
-                if (type === 'reminder' && reminderMinutes > 0) {
-                const title = '🔔 Напоминание о встрече';
-                const text = `${meeting.title}: ${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}\n${meeting.desc || ''}`;
+            // Форматирование текста сообщения
+            let title, text;
+            const dateStr = formatDisplayDate(new Date(meeting.date));
+            
+            if (type === 'reminder' && reminderMinutes > 0) {
+                title = '🔔 Напоминание о встрече';
+                text = `Встреча начнется через ${reminderMinutes >= 60 ? `${reminderMinutes/60} час` : `${reminderMinutes} мин`}\n\nНазвание: ${meeting.title || 'Встреча'}\n🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
                 
                 // Telegram WebApp уведомление
                 if (window.Telegram && window.Telegram.WebApp) {
@@ -1999,13 +2024,13 @@ function addParticipant() {
                                 message: text
                             });
                         }
-                    } catch(e) {}
-                }
+                        // Отправка данных через Bot API
+                sendBotNotification(text);
             }
             
             if (type === 'start') {
-                const title = '🔔 Встреча 시작илась';
-                const text = `${meeting.title} начинается сейчас!\n${meeting.startTime} - ${meeting.endTime} ${meeting.timezone || ''}`;
+                title = '🔔 Встреча началась';
+                text = `Встреча начинается сейчас!\n\nНазвание: ${meeting.title || 'Встреча'}\n🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
                 
                 if (window.Telegram && window.Telegram.WebApp) {
                     try {
@@ -2016,6 +2041,8 @@ function addParticipant() {
                                 message: text
                             });
                         }
+                        // Отправка push-уведомления через Bot API
+                        sendBotNotification(text);
                     } catch(e) {}
                 }
                 
