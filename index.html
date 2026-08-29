@@ -1999,9 +1999,21 @@ function addParticipant() {
             const nowMinutes = now.getHours() * 60 + now.getMinutes();
             const todayStr = formatDate(now);
             const todayMeetings = allTasks[todayStr] || [];
+            let changed = false;
             
             todayMeetings.forEach(meeting => {
-                if (meeting.title !== 'Встреча' || meeting.status === 'completed' || meeting.status === 'cancelled') return;
+                if (meeting.title !== 'Встреча') return;
+                
+                // Автоматическая смена статуса на "Завершена" если время прошло
+                if (meeting.status === 'active') {
+                    const endMinutes = parseInt(meeting.endTime.split(':')[0]) * 60 + parseInt(meeting.endTime.split(':')[1]);
+                    if (nowMinutes > endMinutes) {
+                        meeting.status = 'completed';
+                        changed = true;
+                    }
+                }
+                
+                if (meeting.status === 'completed' || meeting.status === 'cancelled') return;
                 
                 const startMinutes = parseInt(meeting.startTime.split(':')[0]) * 60 + parseInt(meeting.startTime.split(':')[1]);
                 const timeDiff = startMinutes - nowMinutes;
@@ -2024,59 +2036,45 @@ function addParticipant() {
                     }
                 }
             });
+            
+            if (changed) {
+                localStorage.setItem('tasks', JSON.stringify(allTasks));
+            }
         }
         
         function sendMeetingNotification(meeting, type) {
-            const settings = JSON.parse(localStorage.getItem('notifications') || '{}');
             const reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
-            const userSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
-            
-            // Форматирование текста сообщения
             let title, text;
             const dateStr = formatDisplayDate(new Date(meeting.date));
             
             if (type === 'reminder' && reminderMinutes > 0) {
                 title = '🔔 Напоминание о встрече';
-                text = `Встреча начнется через ${reminderMinutes >= 60 ? `${reminderMinutes/60} час` : `${reminderMinutes} мин`}\n\nНазвание: ${meeting.title || 'Встреча'}\n🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
+                const timeStr = reminderMinutes >= 60 ? `${reminderMinutes/60} час` : `${reminderMinutes} мин`;
+                text = `Встреча начнется через ${timeStr}\n\nНазвание: ${meeting.title || 'Встреча'}\n🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
                 
-                // Telegram WebApp уведомление
-                if (window.Telegram && window.Telegram.WebApp) {
-                    try {
-                        if (window.Telegram.WebApp.showPopup) {
-                            window.Telegram.WebApp.showPopup({
-                                type: 'alert',
-                                title: title,
-                                message: text
-                            });
-                        }
-                        // Отправка данных через Bot API
-                sendBotNotification(text);
+                showMeetingNotification(title, text);
             }
             
             if (type === 'start') {
                 title = '🔔 Встреча началась';
                 text = `Встреча начинается сейчас!\n\nНазвание: ${meeting.title || 'Встреча'}\n🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
                 
-                if (window.Telegram && window.Telegram.WebApp) {
-                    try {
-                        if (window.Telegram.WebApp.showPopup) {
-                            window.Telegram.WebApp.showPopup({
-                                type: 'alert',
-                                title: title,
-                                message: text
-                            });
-                        }
-                        // Отправка push-уведомления через Bot API
-                        sendBotNotification(text);
-                    } catch(e) {}
-                }
-                
-                // Используйте tg.sendData для отправки уведомления на сервер
-                if (window.Telegram && window.Telegram.WebApp) {
-                    try {
-                        // Telegram WebApp автоматически показывает уведомления пользователю
-                    } catch(e) {}
-                }
+                showMeetingNotification(title, text);
+            }
+        }
+        
+        function showMeetingNotification(title, text) {
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    if (window.Telegram.WebApp.showPopup) {
+                        window.Telegram.WebApp.showPopup({
+                            type: 'alert',
+                            title: title,
+                            message: text
+                        });
+                    }
+                    sendBotNotification(text);
+                } catch(e) {}
             }
         }
 
