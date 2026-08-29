@@ -1261,8 +1261,24 @@ function addParticipant() {
             tasks[dateStr].push(meeting);
             localStorage.setItem('tasks', JSON.stringify(tasks));
             
+            // Отправка приглашений участникам через Bot API
+            if (meeting.participants && meeting.participants.length > 0) {
+                sendMeetingInviteToParticipants(meeting, meeting.participants);
+            }
+            
             alert('✅ Встреча создана!');
             backToMenu();
+        }
+        
+        function buildMeetingInviteText(meeting) {
+            const dateStr = formatDisplayDate(new Date(meeting.date));
+            const desc = meeting.desc || 'Без описания';
+            
+            return `📅 Встреча создана!\n\n` +
+                   `Название: ${meeting.title}\n` +
+                   `🕐 Дата: ${dateStr}\n` +
+                   `🕐 Время: ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})\n` +
+                   `💬 Приветствие: ${desc}`;
         }
         
         function exportMeetingICS(meetingId) {
@@ -1990,6 +2006,35 @@ function addParticipant() {
                     parse_mode: 'HTML'
                 })
             }).catch(e => console.error('Notification error:', e));
+        }
+        
+        async function sendMeetingInviteToParticipants(meeting, participants) {
+            const inviteText = buildMeetingInviteText(meeting);
+            
+            for (const username of participants) {
+                try {
+                    // Получаем информацию о пользователе по username
+                    const response = await fetch(
+                        `https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/getChat?username=${username}`
+                    );
+                    const data = await response.json();
+                    
+                    if (data.ok && data.result && data.result.id) {
+                        // Отправляем сообщение участнику
+                        await fetch('https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/sendMessage', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                chat_id: data.result.id,
+                                text: inviteText,
+                                parse_mode: 'HTML'
+                            })
+                        });
+                    }
+                } catch(e) {
+                    console.error(`Failed to send invite to ${username}:`, e);
+                }
+            }
         }
         
         function checkMeetingReminders() {
