@@ -62,6 +62,9 @@
             align-items: center; 
             gap: 8px; 
             font-size: 1.1em; 
+            cursor: pointer;
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
         }
         .footer-item.active { color: #34d399; }
         
@@ -168,6 +171,17 @@
         .time-radio:checked + .time-option { border-color: #34d399; }
         .time-inputs { display: flex; gap: 10px; margin-top: 10px; }
         .time-input { flex: 1; padding: 10px; background: #334155; border: 1px solid #444; border-radius: 6px; color: #e2e8f0; }
+        
+        /* Принудительный сброс для веб-версии Telegram */
+        * {
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+        }
+        body {
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+            overflow: auto !important;
+        }
         .schedule-settings-view { display: none; background: #1e293b; z-index: 10; padding: 15px; box-sizing: border-box; overflow-y: auto; }
 .settings-btn { margin-top: 15px; padding: 12px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%; }
 .settings-btn:hover { background: #2563eb; }
