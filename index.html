@@ -918,6 +918,9 @@
                 if (user && user.id) {
                     localStorage.setItem('telegramUserId', user.id);
                 }
+                if (user && user.username) {
+                    localStorage.setItem('telegramUsername', user.username);
+                }
                 
                 const userNameEl = document.getElementById('userName');
                 if (user) {
@@ -1263,7 +1266,7 @@ function addParticipant() {
             
             // Отправка приглашений участникам через Bot API
             if (meeting.participants && meeting.participants.length > 0) {
-                sendMeetingInviteToParticipants(meeting, meeting.participants);
+                sendMeetingInviteWithButtons(meeting, meeting.participants);
             }
             
             alert('✅ Встреча создана!');
@@ -1274,11 +1277,66 @@ function addParticipant() {
             const dateStr = formatDisplayDate(new Date(meeting.date));
             const desc = meeting.desc || 'Без описания';
             
-            return `📅 Встреча создана!\n\n` +
+            const text = `📅 Встреча создана!\n\n` +
                    `Название: ${meeting.title}\n` +
                    `🕐 Дата: ${dateStr}\n` +
                    `🕐 Время: ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})\n` +
                    `💬 Приветствие: ${desc}`;
+            
+            return text;
+        }
+        
+        async function sendMeetingInviteWithButtons(meeting, participants) {
+            const inviteText = buildMeetingInviteText(meeting);
+            const currentUserId = localStorage.getItem('telegramUserId');
+            const dateStr = formatDisplayDate(new Date(meeting.date));
+            
+            for (const participant of participants) {
+                try {
+                    const username = participant.replace('@', '');
+                    
+                    // Проверка если пользователь приглашает себя
+                    if (username === localStorage.getItem('telegramUsername')) {
+                        if (currentUserId) {
+                            await sendBotMessageWithButtons(currentUserId, inviteText);
+                            console.log(`Invitation sent to self (${username})`);
+                        }
+                        continue;
+                    }
+                    
+                    const response = await fetch(
+                        `https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/getChat?username=${encodeURIComponent(username)}`
+                    );
+                    const data = await response.json();
+                    
+                    if (data.ok && data.result && data.result.id) {
+                        await sendBotMessageWithButtons(data.result.id, inviteText);
+                        console.log(`Invitation sent to ${username}`);
+                    }
+                } catch(e) {
+                    console.error(`Failed to send invite to ${participant}:`, e);
+                }
+            }
+        }
+        
+        async function sendBotMessageWithButtons(chatId, text) {
+            return await fetch('https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/sendMessage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: text,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: "✅ Принять", callback_data: "accept_meeting" },
+                                { text: "❌ Отклонить", callback_data: "decline_meeting" }
+                            ]
+                        ]
+                    }
+                })
+            });
         }
         
         function exportMeetingICS(meetingId) {
@@ -2010,31 +2068,51 @@ function addParticipant() {
         
         async function sendMeetingInviteToParticipants(meeting, participants) {
             const inviteText = buildMeetingInviteText(meeting);
+            const currentUserId = localStorage.getItem('telegramUserId');
             
-            for (const username of participants) {
+            for (const participant of participants) {
                 try {
-                    // Получаем информацию о пользователе по username
+                    const username = participant.replace('@', '');
+                    
+                    // Проверка если пользователь приглашает себя
+                    if (username === localStorage.getItem('telegramUsername')) {
+                        // Отправляем пользователю через Bot API
+                        if (currentUserId) {
+                            await sendBotMessage(currentUserId, inviteText);
+                            console.log(`Invitation sent to self (${username})`);
+                        }
+                        continue;
+                    }
+                    
+                    // Получаем информацию о пользователе по username через Bot API
                     const response = await fetch(
-                        `https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/getChat?username=${username}`
+                        `https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/getChat?username=${encodeURIComponent(username)}`
                     );
                     const data = await response.json();
                     
                     if (data.ok && data.result && data.result.id) {
                         // Отправляем сообщение участнику
-                        await fetch('https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/sendMessage', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                chat_id: data.result.id,
-                                text: inviteText,
-                                parse_mode: 'HTML'
-                            })
-                        });
+                        await sendBotMessage(data.result.id, inviteText);
+                        console.log(`Invitation sent to ${username}`);
+                    } else {
+                        console.warn(`User @${username} not found or private`);
                     }
                 } catch(e) {
-                    console.error(`Failed to send invite to ${username}:`, e);
+                    console.error(`Failed to send invite to ${participant}:`, e);
                 }
             }
+        }
+        
+        async function sendBotMessage(chatId, text) {
+            return await fetch('https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/sendMessage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: text,
+                    parse_mode: 'HTML'
+                })
+            });
         }
         
         function checkMeetingReminders() {
@@ -2097,7 +2175,11 @@ function addParticipant() {
                 const timeStr = reminderMinutes >= 60 ? `${reminderMinutes/60} час` : `${reminderMinutes} мин`;
                 text = `Встреча начнется через ${timeStr}\n\nНазвание: ${meeting.title || 'Встреча'}\n🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
                 
+                // Отправка владельцу
                 showMeetingNotification(title, text);
+                
+                // Отправка участникам напоминания за 10 минут
+                sendParticipantReminder(meeting, 10);
             }
             
             if (type === 'start') {
@@ -2105,6 +2187,57 @@ function addParticipant() {
                 text = `Встреча начинается сейчас!\n\nНазвание: ${meeting.title || 'Встреча'}\n🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
                 
                 showMeetingNotification(title, text);
+                
+                // Уведомление участникам о начале
+                sendParticipantStartNotification(meeting);
+            }
+        }
+        
+        async function sendParticipantReminder(meeting, minutes) {
+            if (!meeting.participants || meeting.participants.length === 0) return;
+            const reminderMinutes = parseInt(localStorage.getItem('reminderMinutes') || '0');
+            if (reminderMinutes === 0) return;
+            
+            const dateStr = formatDisplayDate(new Date(meeting.date));
+            const text = `🔔 Напоминание: Встреча начнется через ${minutes} минут\n\n` +
+                        `🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
+            
+            await sendBotMessageToParticipants(meeting, text);
+        }
+        
+        async function sendParticipantStartNotification(meeting) {
+            if (!meeting.participants || meeting.participants.length === 0) return;
+            
+            const dateStr = formatDisplayDate(new Date(meeting.date));
+            const text = `🔔 Встреча началась!\n\n` +
+                        `🕐 ${dateStr}, ${meeting.startTime} - ${meeting.endTime} (${meeting.timezone || ''})`;
+            
+            await sendBotMessageToParticipants(meeting, text);
+        }
+        
+        async function sendBotMessageToParticipants(meeting, text) {
+            const currentUserId = localStorage.getItem('telegramUserId');
+            const currentUsername = localStorage.getItem('telegramUsername');
+            
+            for (const participant of meeting.participants) {
+                const username = participant.replace('@', '');
+                try {
+                    if (username === currentUsername) {
+                        if (currentUserId) {
+                            await sendBotMessage(currentUserId, text);
+                        }
+                    } else {
+                        const response = await fetch(
+                            `https://api.telegram.org/bot8821627390:AAHOFBo4IAJXCosQZyTApuoufECxArfNB4o/getChat?username=${encodeURIComponent(username)}`
+                        );
+                        const data = await response.json();
+                        if (data.ok && data.result && data.result.id) {
+                            await sendBotMessage(data.result.id, text);
+                        }
+                    }
+                } catch(e) {
+                    console.error(`Failed to send notification to ${username}:`, e);
+                }
             }
         }
         
